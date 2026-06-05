@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    /* The window itself is transparent; this tints the acrylic blur. */
+    background: transparent;
+    color: #b8b0cc;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* lowercase everything, per the aesthetic */
+  body,
+  button,
+  input {
+    text-transform: lowercase;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(125, 111, 196, 0.25);
+    border-radius: 8px;
+  }
+}
+
+@layer components {
+  /* Frosted panel */
+  .glass {
+    background: rgba(10, 8, 16, 0.55);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(180, 160, 240, 0.14);
+  }
+
+  .section-label {
+    @apply text-[11px] font-semibold text-text-muted uppercase;
+    letter-spacing: 0.18em;
+  }
+
+  .heading-glow {
+    color: #e2d8fa;
+    text-shadow: 0 0 12px rgba(125, 111, 196, 0.45);
+  }
+
+  /* Channel rows */
+  .channel-item {
+    @apply flex items-center gap-2 rounded-glass px-3 py-1.5 text-text-muted transition-colors;
+    cursor: default;
+  }
+  .channel-item:hover {
+    @apply text-text-primary;
+    background: rgba(125, 111, 196, 0.1);
+  }
+  .channel-item.active {
+    color: #e2d8fa;
+    background: rgba(125, 111, 196, 0.22);
+    box-shadow: inset 0 0 18px rgba(125, 111, 196, 0.18);
+    border-left: 2px solid #7d6fc4;
+  }
+
+  /* Status dots with glow */
+  .status-dot {
+    @apply inline-block h-2.5 w-2.5 rounded-full;
+  }
+  .status-online {
+    background: #6cd47e;
+    box-shadow: 0 0 8px #6cd47e;
+  }
+  .status-idle {
+    background: #d4b25a;
+    box-shadow: 0 0 8px #d4b25a;
+  }
+  .status-dnd {
+    background: #d4537e;
+    box-shadow: 0 0 8px #d4537e;
+  }
+  .status-offline {
+    background: #4a4458;
+  }
+
+  /* Inputs */
+  .glass-input {
+    @apply w-full rounded-glass px-3 py-2 text-text-primary outline-none transition;
+    background: rgba(10, 8, 16, 0.6);
+    border: 1px solid rgba(180, 160, 240, 0.14);
+  }
+  .glass-input:focus {
+    border-color: rgba(125, 111, 196, 0.6);
+    box-shadow: 0 0 0 1px rgba(125, 111, 196, 0.3), 0 0 18px rgba(125, 111, 196, 0.2);
+  }
+
+  .btn-accent {
+    @apply rounded-glass px-4 py-2 font-medium text-text-heading transition;
+    background: linear-gradient(135deg, rgba(125, 111, 196, 0.9), rgba(212, 83, 126, 0.8));
+    box-shadow: 0 0 18px rgba(125, 111, 196, 0.35);
+  }
+  .btn-accent:hover {
+    box-shadow: 0 0 26px rgba(125, 111, 196, 0.55);
+  }
+  .btn-accent:disabled {
+    opacity: 0.5;
+    box-shadow: none;
+  }
+}
+
+/* Blurred colour orbs that float behind the whole UI */
+.orb {
+  position: fixed;
+  border-radius: 9999px;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+}

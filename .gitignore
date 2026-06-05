@@ -1,0 +1,31 @@
+node_modules/
+dist/
+out/
+*.log
+
+# uploaded avatars
+server/uploads/
+
+# Prisma / SQLite local db
+server/prisma/dev.db
+server/prisma/dev.db-journal
+server/prisma/migrations/**/migration_lock.toml
+
+# env files — NEVER commit real secrets (JWT secrets live in server/.env)
+.env
+**/.env
+.env.local
+.env.production
+!**/.env.example
+
+# local DBs anywhere
+*.db
+*.db-journal
+
+# tooling / build artifacts
+.claude/
+client/dist/
+client/release/
+
+# Electron build output
+client/release/

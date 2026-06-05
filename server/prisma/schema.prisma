@@ -1,0 +1,116 @@
+// Sephraxia — Prisma schema
+// SQLite has no native enum support, so `status` and `type` are stored as
+// strings constrained by the shared TypeScript union types.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  avatarUrl    String?
+  status       String   @default("offline") // online | idle | dnd | offline
+  isOwner      Boolean  @default(false) // bypasses all permission checks
+  createdAt    DateTime @default(now())
+
+  // Moderation state (global; this is a single-community server)
+  bannedAt     DateTime? // non-null = banned (cannot log in / connect)
+  bannedReason String?
+  mutedUntil   DateTime? // timeout: cannot send messages until this time
+
+  messages         Message[]
+  sentMessages     DirectMessage[] @relation("SentDirectMessages")
+  receivedMessages DirectMessage[] @relation("ReceivedDirectMessages")
+  roles            Role[]          @relation("UserRoles")
+
+  sentFriendRequests     Friendship[] @relation("SentFriendRequests")
+  receivedFriendRequests Friendship[] @relation("ReceivedFriendRequests")
+}
+
+model Channel {
+  id       String @id @default(cuid())
+  name     String
+  type     String @default("text") // text | voice
+  position Int    @default(0)
+
+  messages Message[]
+}
+
+model Message {
+  id          String    @id @default(cuid())
+  content     String
+  attachments String? // JSON-encoded Attachment[] (SQLite has no JSON column)
+  createdAt   DateTime  @default(now())
+  editedAt    DateTime?
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  channelId String
+  channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  // Optional reply to another message in the same channel.
+  replyToId String?
+  replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   Message[] @relation("MessageReplies")
+
+  @@index([channelId, createdAt])
+}
+
+model DirectMessage {
+  id          String    @id @default(cuid())
+  content     String
+  attachments String? // JSON-encoded Attachment[]
+  createdAt   DateTime  @default(now())
+  editedAt    DateTime?
+
+  fromId String
+  from   User   @relation("SentDirectMessages", fields: [fromId], references: [id], onDelete: Cascade)
+
+  toId String
+  to   User   @relation("ReceivedDirectMessages", fields: [toId], references: [id], onDelete: Cascade)
+
+  replyToId String?
+  replyTo   DirectMessage?  @relation("DmReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   DirectMessage[] @relation("DmReplies")
+
+  @@index([fromId, toId, createdAt])
+}
+
+model Role {
+  id       String @id @default(cuid())
+  name     String
+  color    String
+  symbol   String
+  position Int    @default(0)
+
+  // Permissions
+  canManageChannels Boolean @default(false)
+  canDeleteMessages Boolean @default(false)
+  canManageRoles    Boolean @default(false)
+  canKick           Boolean @default(false)
+  canBan            Boolean @default(false)
+  canTimeout        Boolean @default(false)
+
+  users User[] @relation("UserRoles")
+}
+
+model Friendship {
+  id          String   @id @default(cuid())
+  requesterId String
+  requester   User     @relation("SentFriendRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId String
+  addressee   User     @relation("ReceivedFriendRequests", fields: [addresseeId], references: [id], onDelete: Cascade)
+  status      String   @default("pending") // pending | accepted
+  createdAt   DateTime @default(now())
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+}

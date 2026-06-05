@@ -1,0 +1,37 @@
+appId: com.sephraxia.app
+productName: Sephraxia
+copyright: © sephraxia
+# electron is hoisted to the workspace root, so pin the version explicitly.
+electronVersion: 33.3.1
+
+directories:
+  output: dist
+  buildResources: build
+
+# What goes inside the packaged app.
+files:
+  - out/**
+  - package.json
+
+asar: true
+
+win:
+  target:
+    - nsis
+  # No code-signing cert: the installer is unsigned (SmartScreen will warn on
+  # first run → "More info" → "Run anyway"). Auto-updates still work.
+
+nsis:
+  oneClick: true
+  perMachine: false
+  allowToChangeInstallationDirectory: false
+  artifactName: Sephraxia-Setup-${version}.exe
+
+# Auto-update feed: GitHub Releases. `npm run release` builds + publishes a
+# release; installed clients update from it automatically. releaseType=release
+# publishes immediately (not a draft) so clients see it.
+publish:
+  provider: github
+  owner: sea1ark
+  repo: sephraxiaXteamDS
+  releaseType: release
