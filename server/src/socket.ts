@@ -76,6 +76,17 @@ const onlineCounts = new Map<string, number>();
 const voiceMembers = new Map<string, Map<string, boolean>>();
 const voiceSocketByUser = new Map<string, string>();
 
+// 1:1 call state. A user is in at most one call. `callPartner` records both
+// directions of an active call; `pendingInvite` maps a callee -> caller while
+// the phone is "ringing" but not yet answered. `callSocketByUser` records the
+// socket that owns each user's call/ring so multi-window stays sane and we can
+// tear the call down on that socket's disconnect.
+const callPartner = new Map<string, string>();
+const pendingInvite = new Map<string, string>();
+const callSocketByUser = new Map<string, string>();
+
+const isOnline = (userId: string): boolean => (onlineCounts.get(userId) ?? 0) > 0;
+
 function voiceSnapshot(): Record<string, VoiceParticipant[]> {
   const out: Record<string, VoiceParticipant[]> = {};
   for (const [channelId, m] of voiceMembers) {
@@ -329,6 +340,80 @@ export function setupSocket(httpServer: HttpServer): SephraxiaServer {
       }
     });
 
+    // --- 1:1 calls (ring flow; media uses the voice:signal relay above) ---
+
+    // Caller dials a callee.
+    socket.on('call:invite', ({ toUserId }) => {
+      if (!toUserId || toUserId === userId) return;
+      if (!isOnline(toUserId)) {
+        socket.emit('call:unavailable', { peerUserId: toUserId });
+        return;
+      }
+      // Reject if either side is already busy (in a call or mid-ring).
+      if (
+        callPartner.has(toUserId) ||
+        callPartner.has(userId) ||
+        pendingInvite.has(toUserId)
+      ) {
+        socket.emit('call:busy', { peerUserId: toUserId });
+        return;
+      }
+      pendingInvite.set(toUserId, userId);
+      callSocketByUser.set(userId, socket.id);
+      io.to(userRoom(toUserId)).emit('call:incoming', { fromUserId: userId });
+      socket.emit('call:ringing', { toUserId });
+    });
+
+    // Caller aborts before the callee answers.
+    socket.on('call:cancel', ({ toUserId }) => {
+      if (pendingInvite.get(toUserId) === userId) {
+        pendingInvite.delete(toUserId);
+        if (callSocketByUser.get(userId) === socket.id) callSocketByUser.delete(userId);
+        io.to(userRoom(toUserId)).emit('call:canceled', { peerUserId: userId });
+      }
+    });
+
+    // Callee accepts: open the mesh on both this socket and the caller's socket.
+    socket.on('call:accept', ({ peerUserId }) => {
+      if (pendingInvite.get(userId) !== peerUserId) return; // stale / no such ring
+      pendingInvite.delete(userId);
+      callPartner.set(userId, peerUserId);
+      callPartner.set(peerUserId, userId);
+      callSocketByUser.set(userId, socket.id);
+      const callerSocketId = callSocketByUser.get(peerUserId);
+      socket.emit('call:accepted', { peerUserId });
+      if (callerSocketId) io.to(callerSocketId).emit('call:accepted', { peerUserId: userId });
+      else io.to(userRoom(peerUserId)).emit('call:accepted', { peerUserId: userId });
+      // Stop the ring on any OTHER windows this callee has open.
+      socket.to(userRoom(userId)).emit('call:canceled', { peerUserId });
+    });
+
+    // Callee rejects.
+    socket.on('call:decline', ({ peerUserId }) => {
+      if (pendingInvite.get(userId) !== peerUserId) return;
+      pendingInvite.delete(userId);
+      const callerSocketId = callSocketByUser.get(peerUserId);
+      if (callerSocketId) io.to(callerSocketId).emit('call:declined', { peerUserId: userId });
+      else io.to(userRoom(peerUserId)).emit('call:declined', { peerUserId: userId });
+      // Clear the ring on this callee's other windows too.
+      socket.to(userRoom(userId)).emit('call:canceled', { peerUserId });
+    });
+
+    // Hang up. Handles both an active call and (defensively) a still-ringing one.
+    socket.on('call:end', ({ peerUserId }) => {
+      if (callPartner.get(userId) === peerUserId) {
+        callPartner.delete(userId);
+        callPartner.delete(peerUserId);
+        if (callSocketByUser.get(userId) === socket.id) callSocketByUser.delete(userId);
+        callSocketByUser.delete(peerUserId);
+        io.to(userRoom(peerUserId)).emit('call:ended', { peerUserId: userId });
+      } else if (pendingInvite.get(peerUserId) === userId) {
+        pendingInvite.delete(peerUserId);
+        if (callSocketByUser.get(userId) === socket.id) callSocketByUser.delete(userId);
+        io.to(userRoom(peerUserId)).emit('call:canceled', { peerUserId: userId });
+      }
+    });
+
     // Send the joiner the current voice membership of every channel.
     socket.emit('voice:snapshot', { channels: voiceSnapshot() });
 
@@ -355,11 +440,36 @@ export function setupSocket(httpServer: HttpServer): SephraxiaServer {
         for (const cid of removeFromAllVoice(userId)) io.emit('voice:left', { channelId: cid, userId });
       }
 
+      // If this socket owned the user's call, end it and notify the other side.
+      if (callSocketByUser.get(userId) === socket.id) {
+        callSocketByUser.delete(userId);
+        const partner = callPartner.get(userId);
+        if (partner) {
+          callPartner.delete(userId);
+          callPartner.delete(partner);
+          callSocketByUser.delete(partner);
+          io.to(userRoom(partner)).emit('call:ended', { peerUserId: userId });
+        }
+        // Cancel any outgoing rings this socket had pending.
+        for (const [callee, caller] of pendingInvite) {
+          if (caller === userId) {
+            pendingInvite.delete(callee);
+            io.to(userRoom(callee)).emit('call:canceled', { peerUserId: userId });
+          }
+        }
+      }
+
       const count = (onlineCounts.get(userId) ?? 1) - 1;
       if (count <= 0) {
         // Last socket closed. Keep the stored status (online/idle/dnd) intact;
         // presence overlay in the REST routes will report them as offline.
         onlineCounts.delete(userId);
+        // Drop any incoming ring aimed at this now-offline user.
+        const caller = pendingInvite.get(userId);
+        if (caller) {
+          pendingInvite.delete(userId);
+          io.to(userRoom(caller)).emit('call:ended', { peerUserId: userId });
+        }
         socket.broadcast.emit('user:offline', { userId });
       } else {
         onlineCounts.set(userId, count);

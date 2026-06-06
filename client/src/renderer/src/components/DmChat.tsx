@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '../store/chat';
 import { useAuthStore } from '../store/auth';
 import { useUiStore } from '../store/ui';
+import { useVoiceStore } from '../store/voice';
 import { getSocket } from '../lib/socket';
+import * as voice from '../lib/voice';
 import { useAttachments } from '../lib/useAttachments';
 import { Avatar } from './Avatar';
 import { nameColor } from '../lib/roles';
@@ -23,6 +25,8 @@ export function DmChat() {
   const partner = useChatStore((s) => s.users.find((u) => u.id === activeDmUserId));
   const markDmRead = useChatStore((s) => s.markDmRead);
   const me = useAuthStore((s) => s.user);
+  const callStatus = useVoiceStore((s) => s.call.status);
+  const inVoiceChannel = useVoiceStore((s) => s.channelId);
 
   const [draft, setDraft] = useState('');
   const [dragging, setDragging] = useState(false);
@@ -105,15 +109,23 @@ export function DmChat() {
         uploadFiles(Array.from(e.dataTransfer.files));
       }}
     >
-      <button
-        onClick={() => openProfile(partner.id)}
-        className="flex items-center gap-2 border-b border-glass-border px-5 py-3"
-      >
-        <Avatar username={partner.username} avatarUrl={partner.avatarUrl} size={26} />
-        <span className="heading-glow text-sm font-semibold" style={{ color: nameColor(partner) }}>
-          {partner.username}
-        </span>
-      </button>
+      <div className="flex items-center justify-between border-b border-glass-border px-5 py-3">
+        <button onClick={() => openProfile(partner.id)} className="flex min-w-0 items-center gap-2">
+          <Avatar username={partner.username} avatarUrl={partner.avatarUrl} size={26} />
+          <span className="heading-glow truncate text-sm font-semibold" style={{ color: nameColor(partner) }}>
+            {partner.username}
+          </span>
+        </button>
+        <button
+          onClick={() => voice.startCall(partner.id)}
+          disabled={callStatus !== 'idle' || !!inVoiceChannel}
+          className="grid h-9 w-9 place-items-center rounded-glass text-base text-text-muted transition hover:text-accent-violet disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ background: 'rgba(108,212,126,0.1)', border: '1px solid rgba(108,212,126,0.22)' }}
+          title={inVoiceChannel ? 'leave voice channel first' : callStatus !== 'idle' ? 'already in a call' : `call ${partner.username}`}
+        >
+          📞
+        </button>
+      </div>
 
       <div ref={scrollRef} onScroll={onScroll} className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
         {(messages ?? []).map((m) => (

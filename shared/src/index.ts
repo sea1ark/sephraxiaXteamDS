@@ -180,12 +180,27 @@ export interface ClientToServerEvents {
   // is opaque to the server (RTCSessionDescriptionInit | RTCIceCandidateInit).
   'voice:signal': (payload: { channelId: string; toUserId: string; data: VoiceSignal }) => void;
   'voice:state': (payload: { channelId: string; muted: boolean }) => void;
+
+  // --- 1:1 calls in direct messages (ring flow over the per-user rooms) ---
+  // The same WebRTC mesh machinery powers calls; these events only handle the
+  // ring/accept handshake. Once accepted, media is negotiated via voice:signal.
+  'call:invite': (payload: { toUserId: string }) => void; // start ringing someone
+  'call:cancel': (payload: { toUserId: string }) => void; // caller aborts before answer
+  'call:accept': (payload: { peerUserId: string }) => void; // callee picks up
+  'call:decline': (payload: { peerUserId: string }) => void; // callee rejects
+  'call:end': (payload: { peerUserId: string }) => void; // hang up an active call
 }
 
-/** Opaque WebRTC signaling payload relayed between peers. */
+/**
+ * Opaque WebRTC signaling payload relayed between peers. `media` is a small
+ * out-of-band note so the receiver can label incoming video streams (which
+ * MediaStream is a shared screen vs a webcam) — the stream ids are stable
+ * across the connection.
+ */
 export type VoiceSignal =
   | { kind: 'offer' | 'answer'; sdp: string }
-  | { kind: 'ice'; candidate: unknown };
+  | { kind: 'ice'; candidate: unknown }
+  | { kind: 'media'; camStreamId: string | null; screenStreamId: string | null; muted: boolean };
 
 /** Per-channel voice participant with their current mute state. */
 export interface VoiceParticipant {
@@ -228,4 +243,36 @@ export interface ServerToClientEvents {
   'voice:state': (payload: { channelId: string; userId: string; muted: boolean }) => void;
   // Full voice membership snapshot, sent on connect.
   'voice:snapshot': (payload: { channels: Record<string, VoiceParticipant[]> }) => void;
+
+  // --- 1:1 calls ---
+  'call:incoming': (payload: { fromUserId: string }) => void; // callee: show ringing UI
+  'call:ringing': (payload: { toUserId: string }) => void; // caller: callee is being rung
+  'call:accepted': (payload: { peerUserId: string }) => void; // both: open the peer connection
+  'call:declined': (payload: { peerUserId: string }) => void; // caller: callee rejected
+  'call:canceled': (payload: { peerUserId: string }) => void; // callee: caller hung up first
+  'call:ended': (payload: { peerUserId: string }) => void; // either side left / disconnected
+  'call:busy': (payload: { peerUserId: string }) => void; // caller: callee is already in a call
+  'call:unavailable': (payload: { peerUserId: string }) => void; // caller: callee is offline
 }
+
+/** Phase of the local user's 1:1 call (UI state in the client store). */
+export type CallStatus = 'idle' | 'outgoing' | 'incoming' | 'active';
+
+// --- Auto-update ---
+// Status the main process pushes to the renderer so it can render a visible
+// download UI (progress bar + restart button) for app updates.
+export type UpdaterStatus =
+  | { state: 'idle' }
+  | { state: 'checking' }
+  | { state: 'available'; version: string }
+  | {
+      state: 'progress';
+      version: string;
+      percent: number; // 0–100
+      transferred: number; // bytes downloaded so far
+      total: number; // total bytes
+      bytesPerSecond: number;
+    }
+  | { state: 'downloaded'; version: string }
+  | { state: 'none' } // already on the latest version
+  | { state: 'error'; message: string };

@@ -8,6 +8,11 @@ import { RolesModal } from './components/RolesModal';
 import { MediaViewer } from './components/MediaViewer';
 import { MemberContextMenu } from './components/MemberContextMenu';
 import { ChannelContextMenu } from './components/ChannelContextMenu';
+import { UpdateBanner } from './components/UpdateBanner';
+import { CallView } from './components/CallView';
+import { IncomingCallModal } from './components/IncomingCallModal';
+import { ScreenSharePicker } from './components/ScreenSharePicker';
+import { ScreenViewer } from './components/ScreenViewer';
 import { useAuthStore } from './store/auth';
 
 export default function App() {
@@ -26,12 +31,21 @@ export default function App() {
         <Titlebar />
       </div>
       {loggedIn ? <Layout /> : <Login />}
+      {loggedIn && (
+        <>
+          <CallView />
+          <IncomingCallModal />
+          <ScreenSharePicker />
+          <ScreenViewer />
+        </>
+      )}
       <ProfileModal />
       <SettingsModal />
       <RolesModal />
       <MediaViewer />
       <MemberContextMenu />
       <ChannelContextMenu />
+      <UpdateBanner />
     </div>
   );
 }

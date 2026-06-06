@@ -43,6 +43,9 @@ interface UiState {
   channelMenu: ChannelMenuState | null; // right-click channel menu
   replyTo: ReplyTarget | null; // composer reply target
 
+  screenPickerOpen: boolean; // screen-share source picker
+  screenViewUserId: string | null; // whose shared screen we're watching (fullscreen)
+
   showServer: () => void;
   showFriends: () => void;
   openDm: (userId: string) => void;
@@ -61,6 +64,11 @@ interface UiState {
   openChannelMenu: (menu: ChannelMenuState) => void;
   closeChannelMenu: () => void;
   setReplyTo: (reply: ReplyTarget | null) => void;
+
+  openScreenPicker: () => void;
+  closeScreenPicker: () => void;
+  openScreenView: (userId: string) => void;
+  closeScreenView: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -75,6 +83,9 @@ export const useUiStore = create<UiState>((set) => ({
   memberMenu: null,
   channelMenu: null,
   replyTo: null,
+
+  screenPickerOpen: false,
+  screenViewUserId: null,
 
   showServer: () => set({ view: 'server' }),
   showFriends: () => set({ view: 'friends', memberMenu: null }),
@@ -95,4 +106,9 @@ export const useUiStore = create<UiState>((set) => ({
   openChannelMenu: (menu) => set({ channelMenu: menu, memberMenu: null }),
   closeChannelMenu: () => set({ channelMenu: null }),
   setReplyTo: (replyTo) => set({ replyTo }),
+
+  openScreenPicker: () => set({ screenPickerOpen: true }),
+  closeScreenPicker: () => set({ screenPickerOpen: false }),
+  openScreenView: (userId) => set({ screenViewUserId: userId }),
+  closeScreenView: () => set({ screenViewUserId: null }),
 }));

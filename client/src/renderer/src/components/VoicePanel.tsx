@@ -2,6 +2,7 @@
 // channel: status, mute, deafen, and disconnect.
 import { useChatStore } from '../store/chat';
 import { useVoiceStore } from '../store/voice';
+import { useUiStore } from '../store/ui';
 import * as voice from '../lib/voice';
 
 export function VoicePanel() {
@@ -9,6 +10,9 @@ export function VoicePanel() {
   const connecting = useVoiceStore((s) => s.connecting);
   const muted = useVoiceStore((s) => s.muted);
   const deafened = useVoiceStore((s) => s.deafened);
+  const sharingScreen = useVoiceStore((s) => s.sharingScreen);
+  const cameraOn = useVoiceStore((s) => s.cameraOn);
+  const openPicker = useUiStore((s) => s.openScreenPicker);
   const channel = useChatStore((s) => s.channels.find((c) => c.id === channelId));
 
   if (!channelId) return null;
@@ -41,6 +45,16 @@ export function VoicePanel() {
             title={deafened ? 'undeafen' : 'deafen'}
           >
             {deafened ? '🔈' : '🎧'}
+          </button>
+          <button onClick={() => voice.toggleCamera()} className={iconBtn(cameraOn)} title={cameraOn ? 'turn camera off' : 'turn camera on'}>
+            {cameraOn ? '📹' : '📷'}
+          </button>
+          <button
+            onClick={() => (sharingScreen ? voice.stopScreenShare() : openPicker())}
+            className={iconBtn(sharingScreen)}
+            title={sharingScreen ? 'stop sharing' : 'share screen'}
+          >
+            🖥
           </button>
           <button
             onClick={() => voice.leaveVoice()}

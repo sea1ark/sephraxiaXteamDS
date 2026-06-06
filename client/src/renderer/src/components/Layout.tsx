@@ -110,6 +110,43 @@ export function Layout() {
     );
     socket.on('voice:peers', ({ participants }) => voice.onPeers(participants));
     socket.on('voice:signal', ({ fromUserId, data }) => voice.onSignal(fromUserId, data));
+
+    // --- 1:1 calls ---
+    socket.on('call:incoming', ({ fromUserId }) => {
+      const vs = useVoiceStore.getState();
+      // Busy? auto-decline so the caller isn't left ringing.
+      if (vs.call.status !== 'idle' || vs.channelId) {
+        socket.emit('call:decline', { peerUserId: fromUserId });
+        return;
+      }
+      vs.setIncoming(fromUserId);
+      api.getUser(fromUserId).then(upsertUser).catch(() => {});
+    });
+    socket.on('call:accepted', ({ peerUserId }) => {
+      sounds.ringtone.stop();
+      voice.onCallAccepted(peerUserId);
+    });
+    socket.on('call:declined', () => {
+      voice.abortOutgoing();
+      useVoiceStore.getState().endCallState();
+      sounds.leave();
+    });
+    socket.on('call:canceled', () => {
+      sounds.ringtone.stop();
+      useVoiceStore.getState().endCallState();
+    });
+    socket.on('call:ended', () => voice.handleRemoteCallEnd());
+    socket.on('call:busy', () => {
+      voice.abortOutgoing();
+      useVoiceStore.getState().endCallState();
+      alert('that user is already in a call.');
+    });
+    socket.on('call:unavailable', () => {
+      voice.abortOutgoing();
+      useVoiceStore.getState().endCallState();
+      alert('that user is offline.');
+    });
+
     socket.on('moderation:enforced', ({ action, reason }) => {
       alert(action === 'ban' ? `you were banned${reason ? `: ${reason}` : ''}.` : 'you were kicked.');
       logout();

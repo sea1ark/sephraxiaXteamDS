@@ -24,6 +24,11 @@ export function ChannelList() {
   const voiceChannelId = useVoiceStore((s) => s.channelId);
   const voiceParticipants = useVoiceStore((s) => s.participants);
   const speaking = useVoiceStore((s) => s.speaking);
+  const remoteMedia = useVoiceStore((s) => s.remoteMedia);
+  const sharingScreen = useVoiceStore((s) => s.sharingScreen);
+  const cameraOn = useVoiceStore((s) => s.cameraOn);
+  const myId = useAuthStore((s) => s.user?.id);
+  const openScreenView = useUiStore((s) => s.openScreenView);
 
   const canManageChannels = !!permissions?.canManageChannels;
   const canManageRoles = !!permissions?.canManageRoles;
@@ -143,6 +148,9 @@ export function ChannelList() {
                   <div className="ml-3 space-y-0.5 border-l border-glass-border py-0.5 pl-3">
                     {here.map((p) => {
                       const u = users.find((x) => x.id === p.userId);
+                      const isMe = p.userId === myId;
+                      const sharing = isMe ? sharingScreen : !!remoteMedia[p.userId]?.screenStreamId;
+                      const onCam = isMe ? cameraOn : !!remoteMedia[p.userId]?.camStreamId;
                       return (
                         <div
                           key={p.userId}
@@ -169,7 +177,19 @@ export function ChannelList() {
                           <span className="truncate" style={{ color: nameColor(u) }}>
                             {u?.username ?? 'unknown'}
                           </span>
-                          {p.muted && <span className="ml-auto text-text-muted">🔇</span>}
+                          <span className="ml-auto flex items-center gap-1">
+                            {onCam && <span title="camera on">📹</span>}
+                            {sharing && (
+                              <button
+                                onClick={() => openScreenView(p.userId)}
+                                className="transition hover:scale-110"
+                                title="watch screen"
+                              >
+                                🖥
+                              </button>
+                            )}
+                            {p.muted && <span className="text-text-muted">🔇</span>}
+                          </span>
                         </div>
                       );
                     })}

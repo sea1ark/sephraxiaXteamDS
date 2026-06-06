@@ -1,9 +1,22 @@
-// Voice-chat UI state: which voice channel we're connected to, our mute/deafen
-// state, who is currently speaking, selected audio devices, and the live
-// participant map for every voice channel. WebRTC plumbing lives in lib/voice.
+// Voice/call UI state: which voice channel we're connected to, our mute/deafen
+// state, who is speaking, selected audio devices, the live participant map for
+// every voice channel, and 1:1 call + screen/camera state. The WebRTC plumbing
+// itself lives in lib/voice (MediaStreams are kept there, outside React).
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { VoiceParticipant } from '@sephraxia/shared';
+import type { CallStatus, VoiceParticipant } from '@sephraxia/shared';
+
+/** What media a remote peer is currently sending (so we can label tiles). */
+export interface RemoteMediaInfo {
+  camStreamId: string | null;
+  screenStreamId: string | null;
+  muted: boolean;
+}
+
+interface CallInfo {
+  status: CallStatus; // idle | outgoing | incoming | active
+  peerUserId: string | null;
+}
 
 interface VoiceState {
   channelId: string | null; // the voice channel WE are connected to
@@ -14,6 +27,13 @@ interface VoiceState {
   speaking: Record<string, boolean>; // userId -> currently talking
   inputDeviceId: string | null; // selected microphone (persisted)
   outputDeviceId: string | null; // selected speakers (persisted)
+
+  // 1:1 calls + live media
+  call: CallInfo;
+  sharingScreen: boolean; // WE are sharing our screen
+  cameraOn: boolean; // OUR camera is on
+  remoteMedia: Record<string, RemoteMediaInfo>; // userId -> their media
+  mediaVersion: number; // bumped to force tiles to re-read streams
 
   setConnected: (channelId: string | null) => void;
   setConnecting: (v: boolean) => void;
@@ -27,6 +47,18 @@ interface VoiceState {
   clearSpeaking: () => void;
   setInputDeviceId: (id: string | null) => void;
   setOutputDeviceId: (id: string | null) => void;
+
+  // media + call actions
+  setSharingScreen: (v: boolean) => void;
+  setCameraOn: (v: boolean) => void;
+  bumpMedia: () => void;
+  setRemoteMedia: (userId: string, info: RemoteMediaInfo) => void;
+  clearRemoteMediaFor: (userId: string) => void;
+  clearRemoteMedia: () => void;
+  startOutgoing: (peerUserId: string) => void;
+  setIncoming: (peerUserId: string) => void;
+  setCallActive: (peerUserId: string) => void;
+  endCallState: () => void;
 }
 
 export const useVoiceStore = create<VoiceState>()(
@@ -41,8 +73,13 @@ export const useVoiceStore = create<VoiceState>()(
       inputDeviceId: null,
       outputDeviceId: null,
 
-      setConnected: (channelId) =>
-        set({ channelId, connecting: false, speaking: channelId ? {} : {} }),
+      call: { status: 'idle', peerUserId: null },
+      sharingScreen: false,
+      cameraOn: false,
+      remoteMedia: {},
+      mediaVersion: 0,
+
+      setConnected: (channelId) => set({ channelId, connecting: false, speaking: {} }),
       setConnecting: (connecting) => set({ connecting }),
       setMuted: (muted) => set({ muted }),
       setDeafened: (deafened) => set({ deafened }),
@@ -87,6 +124,25 @@ export const useVoiceStore = create<VoiceState>()(
       clearSpeaking: () => set({ speaking: {} }),
       setInputDeviceId: (inputDeviceId) => set({ inputDeviceId }),
       setOutputDeviceId: (outputDeviceId) => set({ outputDeviceId }),
+
+      setSharingScreen: (sharingScreen) => set({ sharingScreen }),
+      setCameraOn: (cameraOn) => set({ cameraOn }),
+      bumpMedia: () => set((s) => ({ mediaVersion: s.mediaVersion + 1 })),
+      setRemoteMedia: (userId, info) =>
+        set((s) => ({ remoteMedia: { ...s.remoteMedia, [userId]: info } })),
+      clearRemoteMediaFor: (userId) =>
+        set((s) => {
+          if (!s.remoteMedia[userId]) return s;
+          const remoteMedia = { ...s.remoteMedia };
+          delete remoteMedia[userId];
+          return { remoteMedia };
+        }),
+      clearRemoteMedia: () => set({ remoteMedia: {} }),
+      startOutgoing: (peerUserId) => set({ call: { status: 'outgoing', peerUserId } }),
+      setIncoming: (peerUserId) => set({ call: { status: 'incoming', peerUserId } }),
+      setCallActive: (peerUserId) => set({ call: { status: 'active', peerUserId }, connecting: false }),
+      endCallState: () =>
+        set({ call: { status: 'idle', peerUserId: null }, sharingScreen: false, cameraOn: false }),
     }),
     {
       name: 'sephraxia-voice',
