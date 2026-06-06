@@ -6,14 +6,17 @@ import { useAuthStore } from '../store/auth';
 import { useUiStore } from '../store/ui';
 import { useVoiceStore } from '../store/voice';
 import { getSocket } from '../lib/socket';
+import { api } from '../lib/api';
 import * as voice from '../lib/voice';
 import { useAttachments } from '../lib/useAttachments';
+import { useVoiceRecorder } from '../lib/useVoiceRecorder';
 import { Avatar } from './Avatar';
 import { nameColor } from '../lib/roles';
 import { DmMessageItem } from './DmMessageItem';
 import { AttachmentTray } from './AttachmentTray';
 import { ReplyBar } from './ReplyBar';
-import { PhoneIcon } from './icons';
+import { VoiceRecordBar } from './VoiceRecordBar';
+import { PhoneIcon, PlusIcon, MicIcon } from './icons';
 
 export function DmChat() {
   const activeDmUserId = useUiStore((s) => s.activeDmUserId);
@@ -86,6 +89,19 @@ export function DmChat() {
     if (inputRef.current) inputRef.current.style.height = 'auto';
   }
 
+  async function sendVoice(file: File) {
+    const socket = getSocket();
+    if (!socket || !activeDmUserId || muted) return;
+    try {
+      const attachment = await api.uploadFile(file);
+      socket.emit('dm:send', { toId: activeDmUserId, content: '', attachments: [attachment], replyToId: null });
+      stick.current = true;
+    } catch {
+      alert('не удалось отправить голосовое сообщение.');
+    }
+  }
+  const recorder = useVoiceRecorder(sendVoice);
+
   if (!activeDmUserId || !partner) {
     return (
       <div className="glass flex flex-1 items-center justify-center rounded-glass text-text-muted">
@@ -153,16 +169,7 @@ export function DmChat() {
             you are timed out until {mutedUntil!.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.
           </div>
         ) : (
-          <form onSubmit={send} className="flex items-end gap-2">
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              title="attach a file"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-glass text-lg text-text-muted transition hover:text-accent-violet"
-              style={{ background: 'rgba(125,111,196,0.12)', border: '1px solid rgba(180,160,240,0.14)' }}
-            >
-              ＋
-            </button>
+          <>
             <input
               ref={fileInput}
               type="file"
@@ -173,31 +180,55 @@ export function DmChat() {
                 e.target.value = '';
               }}
             />
-            <textarea
-              ref={inputRef}
-              value={draft}
-              rows={1}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                autoGrow();
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-              onPaste={(e) => {
-                const files = Array.from(e.clipboardData.files);
-                if (files.length > 0) {
-                  e.preventDefault();
-                  uploadFiles(files);
-                }
-              }}
-              placeholder={`message @${partner.username}`}
-              className="glass-input max-h-40 resize-none"
-            />
-          </form>
+            {recorder.recording ? (
+              <VoiceRecordBar ms={recorder.ms} onCancel={recorder.cancel} onSend={recorder.stop} />
+            ) : (
+              <form onSubmit={send} className="flex items-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInput.current?.click()}
+                  title="attach a file"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-glass text-text-muted transition hover:text-accent-violet"
+                  style={{ background: 'rgba(125,111,196,0.12)', border: '1px solid rgba(180,160,240,0.14)' }}
+                >
+                  <PlusIcon size={20} />
+                </button>
+                <textarea
+                  ref={inputRef}
+                  value={draft}
+                  rows={1}
+                  onChange={(e) => {
+                    setDraft(e.target.value);
+                    autoGrow();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      send();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    const files = Array.from(e.clipboardData.files);
+                    if (files.length > 0) {
+                      e.preventDefault();
+                      uploadFiles(files);
+                    }
+                  }}
+                  placeholder={`message @${partner.username}`}
+                  className="glass-input max-h-40 resize-none"
+                />
+                <button
+                  type="button"
+                  onClick={recorder.start}
+                  title="record a voice message"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-glass text-text-muted transition hover:text-accent-violet"
+                  style={{ background: 'rgba(125,111,196,0.12)', border: '1px solid rgba(180,160,240,0.14)' }}
+                >
+                  <MicIcon size={19} />
+                </button>
+              </form>
+            )}
+          </>
         )}
       </div>
 

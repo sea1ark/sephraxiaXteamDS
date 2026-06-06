@@ -2,6 +2,7 @@
 import { useAuthStore } from '../store/auth';
 import { useUiStore } from '../store/ui';
 import { Avatar } from './Avatar';
+import { SettingsIcon, LogoutIcon } from './icons';
 
 const STATUS_CLASS: Record<string, string> = {
   online: 'status-online',
@@ -37,14 +38,14 @@ export function UserFooter() {
           className="grid h-7 w-7 place-items-center rounded-md text-text-muted transition hover:bg-white/5 hover:text-accent-violet"
           title="settings"
         >
-          ⚙
+          <SettingsIcon size={17} />
         </button>
         <button
           onClick={logout}
           className="grid h-7 w-7 place-items-center rounded-md text-text-muted transition hover:bg-accent-pink/20 hover:text-accent-pink"
           title="log out"
         >
-          ⎋
+          <LogoutIcon size={17} />
         </button>
       </div>
     </div>

@@ -20,6 +20,8 @@ import {
   ScreenShareIcon,
   HangupIcon,
   ChatIcon,
+  SpeakerIcon,
+  UsersIcon,
 } from './icons';
 
 const EMPTY: { userId: string; muted: boolean }[] = [];
@@ -86,7 +88,9 @@ export function VoiceStage({ channelId }: { channelId: string }) {
       {/* header */}
       <div className="flex items-center justify-between border-b border-glass-border px-5 py-3">
         <div className="flex items-center gap-2">
-          <span className="text-text-muted">🔊</span>
+          <span className="text-text-muted">
+            <SpeakerIcon size={17} />
+          </span>
           <span className="heading-glow text-sm font-semibold">{channel?.name ?? 'voice'}</span>
         </div>
         <button
@@ -181,7 +185,9 @@ function InviteTile({ onInvite }: { onInvite: () => void }) {
       className="relative flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-xl"
       style={{ background: 'radial-gradient(circle at 50% 30%, #3a2456, #1d1330)' }}
     >
-      <div className="text-4xl">🎉</div>
+      <div className="text-text-muted opacity-70">
+        <UsersIcon size={40} />
+      </div>
       <p className="px-4 text-center text-xs text-text-muted">it's just you here right now</p>
       <button
         onClick={onInvite}

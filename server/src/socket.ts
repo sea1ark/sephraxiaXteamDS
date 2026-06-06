@@ -342,25 +342,19 @@ export function setupSocket(httpServer: HttpServer): SephraxiaServer {
 
     // --- 1:1 calls (ring flow; media uses the voice:signal relay above) ---
 
-    // Caller dials a callee.
+    // Caller dials a callee. The callee may be OFFLINE — we keep the ring
+    // pending and deliver call:incoming the moment they connect (see below),
+    // so you can call someone who isn't online yet.
     socket.on('call:invite', ({ toUserId }) => {
       if (!toUserId || toUserId === userId) return;
-      if (!isOnline(toUserId)) {
-        socket.emit('call:unavailable', { peerUserId: toUserId });
-        return;
-      }
-      // Reject if either side is already busy (in a call or mid-ring).
-      if (
-        callPartner.has(toUserId) ||
-        callPartner.has(userId) ||
-        pendingInvite.has(toUserId)
-      ) {
+      // Reject only if someone is already busy (in a call or mid-ring).
+      if (callPartner.has(toUserId) || callPartner.has(userId) || pendingInvite.has(toUserId)) {
         socket.emit('call:busy', { peerUserId: toUserId });
         return;
       }
       pendingInvite.set(toUserId, userId);
       callSocketByUser.set(userId, socket.id);
-      io.to(userRoom(toUserId)).emit('call:incoming', { fromUserId: userId });
+      if (isOnline(toUserId)) io.to(userRoom(toUserId)).emit('call:incoming', { fromUserId: userId });
       socket.emit('call:ringing', { toUserId });
     });
 
@@ -416,6 +410,11 @@ export function setupSocket(httpServer: HttpServer): SephraxiaServer {
 
     // Send the joiner the current voice membership of every channel.
     socket.emit('voice:snapshot', { channels: voiceSnapshot() });
+
+    // If someone rang this user while they were offline and the caller is still
+    // waiting, deliver the incoming call now.
+    const incomingCaller = pendingInvite.get(userId);
+    if (incomingCaller) socket.emit('call:incoming', { fromUserId: incomingCaller });
 
     // Presence: mark online on first socket. We preserve a custom status
     // (idle/dnd) the user chose earlier — only a previously-offline user is

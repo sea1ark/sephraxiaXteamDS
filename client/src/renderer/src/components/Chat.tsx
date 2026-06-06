@@ -3,10 +3,14 @@ import { useChatStore } from '../store/chat';
 import { useAuthStore } from '../store/auth';
 import { useUiStore } from '../store/ui';
 import { getSocket } from '../lib/socket';
+import { api } from '../lib/api';
 import { useAttachments } from '../lib/useAttachments';
+import { useVoiceRecorder } from '../lib/useVoiceRecorder';
 import { MessageItem } from './MessageItem';
 import { AttachmentTray } from './AttachmentTray';
 import { ReplyBar } from './ReplyBar';
+import { VoiceRecordBar } from './VoiceRecordBar';
+import { PlusIcon, MicIcon } from './icons';
 
 export function Chat() {
   const activeId = useChatStore((s) => s.activeChannelId);
@@ -95,6 +99,19 @@ export function Chat() {
     if (inputRef.current) inputRef.current.style.height = 'auto';
   }
 
+  async function sendVoice(file: File) {
+    const socket = getSocket();
+    if (!socket || !activeId) return;
+    try {
+      const attachment = await api.uploadFile(file);
+      socket.emit('message:send', { channelId: activeId, content: '', attachments: [attachment], replyToId: null });
+      stick.current = true;
+    } catch {
+      alert('не удалось отправить голосовое сообщение.');
+    }
+  }
+  const recorder = useVoiceRecorder(sendVoice);
+
   const typingNames = (typing ?? [])
     .filter((id) => id !== me?.id)
     .map((id) => users.find((u) => u.id === id)?.username)
@@ -164,52 +181,67 @@ export function Chat() {
             {' — '}you can&apos;t send messages right now.
           </div>
         ) : (
-          <form onSubmit={send} className="flex items-end gap-2">
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              title="attach a file"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-glass text-lg text-text-muted transition hover:text-accent-violet"
-              style={{ background: 'rgba(125,111,196,0.12)', border: '1px solid rgba(180,160,240,0.14)' }}
-            >
-              ＋
-            </button>
-            <input
-              ref={fileInput}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                uploadFiles(Array.from(e.target.files ?? []));
-                e.target.value = '';
-              }}
-            />
-            <textarea
-              ref={inputRef}
-              value={draft}
-              rows={1}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                autoGrow();
-                emitTyping();
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-              onPaste={(e) => {
-                const files = Array.from(e.clipboardData.files);
-                if (files.length > 0) {
-                  e.preventDefault();
-                  uploadFiles(files);
-                }
-              }}
-              placeholder={`message #${channel.name}`}
-              className="glass-input max-h-40 resize-none"
-            />
-          </form>
+          <>
+          <input
+            ref={fileInput}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              uploadFiles(Array.from(e.target.files ?? []));
+              e.target.value = '';
+            }}
+          />
+          {recorder.recording ? (
+            <VoiceRecordBar ms={recorder.ms} onCancel={recorder.cancel} onSend={recorder.stop} />
+          ) : (
+            <form onSubmit={send} className="flex items-end gap-2">
+              <button
+                type="button"
+                onClick={() => fileInput.current?.click()}
+                title="attach a file"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-glass text-text-muted transition hover:text-accent-violet"
+                style={{ background: 'rgba(125,111,196,0.12)', border: '1px solid rgba(180,160,240,0.14)' }}
+              >
+                <PlusIcon size={20} />
+              </button>
+              <textarea
+                ref={inputRef}
+                value={draft}
+                rows={1}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  autoGrow();
+                  emitTyping();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+                onPaste={(e) => {
+                  const files = Array.from(e.clipboardData.files);
+                  if (files.length > 0) {
+                    e.preventDefault();
+                    uploadFiles(files);
+                  }
+                }}
+                placeholder={`message #${channel.name}`}
+                className="glass-input max-h-40 resize-none"
+              />
+              <button
+                type="button"
+                onClick={recorder.start}
+                title="record a voice message"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-glass text-text-muted transition hover:text-accent-violet"
+                style={{ background: 'rgba(125,111,196,0.12)', border: '1px solid rgba(180,160,240,0.14)' }}
+              >
+                <MicIcon size={19} />
+              </button>
+            </form>
+          )}
+          </>
         )}
       </div>
 

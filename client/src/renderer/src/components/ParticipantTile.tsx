@@ -6,6 +6,7 @@ import type { PublicUser } from '@sephraxia/shared';
 import { Avatar } from './Avatar';
 import { VideoTile } from './VideoTile';
 import { nameColor } from '../lib/roles';
+import { MicOffIcon } from './icons';
 
 /** Deterministic muted gradient per user (stands in for a Discord accent color). */
 export function tileColors(seed: string): { from: string; to: string } {
@@ -49,7 +50,11 @@ export function ParticipantTile({ user, fallbackName, muted, speaking, stream, m
         className="absolute bottom-2 left-2 flex max-w-[80%] items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium text-white"
         style={{ background: 'rgba(0,0,0,0.55)' }}
       >
-        {muted && <span className="text-[#f23f43]">🔇</span>}
+        {muted && (
+          <span className="text-[#f23f43]">
+            <MicOffIcon size={14} />
+          </span>
+        )}
         <span className="truncate">{label ?? name}</span>
       </div>
     </div>

@@ -10,6 +10,7 @@ import { UserFooter } from './UserFooter';
 import { VoicePanel } from './VoicePanel';
 import { Avatar } from './Avatar';
 import { nameColor } from '../lib/roles';
+import { SpeakerIcon, VideoIcon, ScreenShareIcon, MicOffIcon, PlusIcon } from './icons';
 
 export function ChannelList() {
   const channels = useChatStore((s) => s.channels);
@@ -147,7 +148,7 @@ export function ChannelList() {
                   className={`channel-item ${connected || stageChannelId === c.id ? 'active' : ''}`}
                   title="open voice"
                 >
-                  <span className="text-text-muted">🔊</span>
+                  <span className="text-text-muted"><SpeakerIcon size={16} /></span>
                   <span className="truncate text-sm">{c.name}</span>
                   {here.length > 0 && (
                     <span className="ml-auto text-[10px] text-text-muted">{here.length}</span>
@@ -186,18 +187,26 @@ export function ChannelList() {
                           <span className="truncate" style={{ color: nameColor(u) }}>
                             {u?.username ?? 'unknown'}
                           </span>
-                          <span className="ml-auto flex items-center gap-1">
-                            {onCam && <span title="camera on">📹</span>}
+                          <span className="ml-auto flex items-center gap-1.5 text-text-muted">
+                            {onCam && (
+                              <span title="camera on">
+                                <VideoIcon size={14} />
+                              </span>
+                            )}
                             {sharing && (
                               <button
                                 onClick={() => openScreenView(p.userId)}
-                                className="transition hover:scale-110"
+                                className="transition hover:scale-110 hover:text-accent-violet"
                                 title="watch screen"
                               >
-                                🖥
+                                <ScreenShareIcon size={14} />
                               </button>
                             )}
-                            {p.muted && <span className="text-text-muted">🔇</span>}
+                            {p.muted && (
+                              <span className="text-[#f23f43]" title="muted">
+                                <MicOffIcon size={14} />
+                              </span>
+                            )}
                           </span>
                         </div>
                       );

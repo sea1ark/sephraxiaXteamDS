@@ -6,6 +6,7 @@ import { api, ApiError } from '../lib/api';
 import { useUiStore } from '../store/ui';
 import { useChatStore } from '../store/chat';
 import { useAuthStore } from '../store/auth';
+import { SpeakerIcon } from './icons';
 
 export function ChannelContextMenu() {
   const menu = useUiStore((s) => s.channelMenu);
@@ -97,8 +98,9 @@ export function ChannelContextMenu() {
         style={{ left, top, boxShadow: '0 16px 40px rgba(0,0,0,0.5)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-glass-border px-3 py-1.5 text-xs font-semibold text-text-heading">
-          {channel.type === 'voice' ? '🔊' : '#'} {channel.name}
+        <div className="flex items-center gap-1.5 border-b border-glass-border px-3 py-1.5 text-xs font-semibold text-text-heading">
+          {channel.type === 'voice' ? <SpeakerIcon size={14} /> : <span>#</span>}
+          <span className="truncate">{channel.name}</span>
         </div>
 
         {renaming ? (
