@@ -5,10 +5,12 @@ import type { UpdaterStatus } from '@sephraxia/shared';
 
 export function useUpdater() {
   const [status, setStatus] = useState<UpdaterStatus>({ state: 'idle' });
+  const [appVersion, setAppVersion] = useState('');
 
   useEffect(() => {
     const u = window.sephraxia.updater;
     u.current().then(setStatus).catch(() => {});
+    window.sephraxia.app.version().then(setAppVersion).catch(() => {});
     return u.onStatus(setStatus);
   }, []);
 
@@ -19,9 +21,12 @@ export function useUpdater() {
 
   return {
     status,
-    version,
+    version, // version of the *pending* update (when there is one)
+    appVersion, // the currently installed version
     downloaded,
     downloading,
+    checking: status.state === 'checking',
+    upToDate: status.state === 'none',
     percent,
     /** Show any update affordance (available / downloading / ready). */
     hasUpdate: downloaded || downloading,

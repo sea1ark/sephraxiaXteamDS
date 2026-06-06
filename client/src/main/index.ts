@@ -90,6 +90,9 @@ function broadcastUpdaterStatus(status: UpdaterStatus): void {
   }
 }
 
+// Installed app version (shown on the login screen).
+ipcMain.handle('app:version', () => app.getVersion());
+
 // Renderer asks for the current state on mount (it may have missed early events).
 ipcMain.handle('updater:current', () => lastUpdaterStatus);
 // Renderer's "Restart" button. quitAndInstall: isSilent, isForceRunAfter.

@@ -141,6 +141,34 @@ export function Login() {
             </p>
           </div>
         )}
+
+        {/* version + update */}
+        <div className="mt-5 flex items-center justify-between border-t border-glass-border pt-3">
+          <span className="text-[11px] text-text-muted">
+            Sephraxia{update.appVersion ? ` v${update.appVersion}` : ''}
+          </span>
+          <button
+            type="button"
+            onClick={() => (update.hasUpdate ? update.install() : update.check())}
+            disabled={update.checking}
+            className="rounded-glass px-3 py-1 text-[11px] font-medium transition disabled:opacity-60"
+            style={
+              update.hasUpdate
+                ? { background: 'rgba(125,111,196,0.25)', color: '#e2d8fa', border: '1px solid rgba(180,160,240,0.4)' }
+                : { background: 'rgba(125,111,196,0.1)', color: '#a89fc4', border: '1px solid rgba(180,160,240,0.16)' }
+            }
+          >
+            {update.downloaded
+              ? 'обновить и перезапустить'
+              : update.downloading
+                ? `загрузка ${update.percent}%`
+                : update.checking
+                  ? 'проверка…'
+                  : update.upToDate
+                    ? 'актуальная версия · проверить'
+                    : 'проверить обновления'}
+          </button>
+        </div>
       </form>
     </div>
   );

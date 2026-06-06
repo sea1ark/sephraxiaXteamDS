@@ -84,7 +84,7 @@ export function FriendsView() {
     >
       {label}
       {badge ? (
-        <span className="grid h-4 min-w-4 place-items-center rounded-full bg-accent-pink px-1 text-[10px] text-text-heading">
+        <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-accent-pink px-[5px] text-[10px] font-semibold leading-none text-text-heading">
           {badge}
         </span>
       ) : null}

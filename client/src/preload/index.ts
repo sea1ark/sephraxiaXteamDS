@@ -20,6 +20,10 @@ const api = {
     // List screens/windows the user can share (for the screen-share picker).
     getSources: (): Promise<DesktopSource[]> => ipcRenderer.invoke('desktop:getSources'),
   },
+  app: {
+    // Installed app version, e.g. "0.1.8".
+    version: (): Promise<string> => ipcRenderer.invoke('app:version'),
+  },
   updater: {
     // Current status (for components mounting after early events fired).
     current: (): Promise<UpdaterStatus> => ipcRenderer.invoke('updater:current'),
