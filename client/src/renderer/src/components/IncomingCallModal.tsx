@@ -7,6 +7,7 @@ import * as voice from '../lib/voice';
 import { sounds } from '../lib/sounds';
 import { Avatar } from './Avatar';
 import { nameColor } from '../lib/roles';
+import { PhoneIcon, HangupIcon } from './icons';
 
 export function IncomingCallModal() {
   const call = useVoiceStore((s) => s.call);
@@ -46,19 +47,19 @@ export function IncomingCallModal() {
         <div className="mt-6 flex items-center gap-4">
           <button
             onClick={() => voice.declineCall(peerId)}
-            className="grid h-14 w-14 place-items-center rounded-full text-2xl text-white transition hover:scale-105"
-            style={{ background: 'rgba(212,83,126,0.85)', boxShadow: '0 0 16px rgba(212,83,126,0.5)' }}
+            className="grid h-14 w-14 place-items-center rounded-full text-white transition hover:scale-105"
+            style={{ background: '#f23f43', boxShadow: '0 0 16px rgba(242,63,67,0.5)' }}
             title="decline"
           >
-            ✕
+            <HangupIcon size={24} />
           </button>
           <button
             onClick={() => voice.acceptCall(peerId)}
-            className="grid h-14 w-14 place-items-center rounded-full text-2xl text-white transition hover:scale-105"
-            style={{ background: 'rgba(108,212,126,0.9)', boxShadow: '0 0 16px rgba(108,212,126,0.5)' }}
+            className="grid h-14 w-14 place-items-center rounded-full text-white transition hover:scale-105"
+            style={{ background: '#23a559', boxShadow: '0 0 16px rgba(35,165,89,0.5)' }}
             title="accept"
           >
-            ✓
+            <PhoneIcon size={23} />
           </button>
         </div>
       </div>

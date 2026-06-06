@@ -13,6 +13,7 @@ import { nameColor } from '../lib/roles';
 import { DmMessageItem } from './DmMessageItem';
 import { AttachmentTray } from './AttachmentTray';
 import { ReplyBar } from './ReplyBar';
+import { PhoneIcon } from './icons';
 
 export function DmChat() {
   const activeDmUserId = useUiStore((s) => s.activeDmUserId);
@@ -119,11 +120,11 @@ export function DmChat() {
         <button
           onClick={() => voice.startCall(partner.id)}
           disabled={callStatus !== 'idle' || !!inVoiceChannel}
-          className="grid h-9 w-9 place-items-center rounded-glass text-base text-text-muted transition hover:text-accent-violet disabled:cursor-not-allowed disabled:opacity-40"
-          style={{ background: 'rgba(108,212,126,0.1)', border: '1px solid rgba(108,212,126,0.22)' }}
+          className="grid h-9 w-9 place-items-center rounded-glass text-[#3edb86] transition hover:brightness-125 disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ background: 'rgba(35,165,89,0.12)', border: '1px solid rgba(35,165,89,0.28)' }}
           title={inVoiceChannel ? 'leave voice channel first' : callStatus !== 'idle' ? 'already in a call' : `call ${partner.username}`}
         >
-          📞
+          <PhoneIcon size={18} />
         </button>
       </div>
 

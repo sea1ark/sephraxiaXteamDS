@@ -10,6 +10,17 @@ import { useVoiceStore } from '../store/voice';
 import * as voice from '../lib/voice';
 import { ParticipantTile } from './ParticipantTile';
 import { ScreenTile } from './ScreenTile';
+import {
+  MicIcon,
+  MicOffIcon,
+  HeadsetIcon,
+  HeadsetOffIcon,
+  VideoIcon,
+  VideoOffIcon,
+  ScreenShareIcon,
+  HangupIcon,
+  ChatIcon,
+} from './icons';
 
 const EMPTY: { userId: string; muted: boolean }[] = [];
 
@@ -83,7 +94,7 @@ export function VoiceStage({ channelId }: { channelId: string }) {
           className="grid h-8 w-8 place-items-center rounded-md text-text-muted transition hover:text-accent-violet"
           title="show chat"
         >
-          💬
+          <ChatIcon size={18} />
         </button>
       </div>
 
@@ -97,23 +108,23 @@ export function VoiceStage({ channelId }: { channelId: string }) {
         {connectedHere ? (
           <>
             <CircleBtn active={muted} on={() => voice.toggleMute()} title={muted ? 'unmute' : 'mute'}>
-              {muted ? '🔇' : '🎙'}
+              {muted ? <MicOffIcon /> : <MicIcon />}
             </CircleBtn>
             <CircleBtn active={deafened} on={() => voice.toggleDeafen()} title={deafened ? 'undeafen' : 'deafen'}>
-              {deafened ? '🔈' : '🎧'}
+              {deafened ? <HeadsetOffIcon /> : <HeadsetIcon />}
             </CircleBtn>
             <CircleBtn active={cameraOn} on={() => voice.toggleCamera()} title={cameraOn ? 'stop camera' : 'start camera'}>
-              {cameraOn ? '📹' : '📷'}
+              {cameraOn ? <VideoIcon /> : <VideoOffIcon />}
             </CircleBtn>
             <CircleBtn
               active={sharingScreen}
               on={() => (sharingScreen ? voice.stopScreenShare() : openPicker())}
               title={sharingScreen ? 'stop sharing' : 'share screen'}
             >
-              🖥
+              <ScreenShareIcon />
             </CircleBtn>
             <CircleBtn danger on={() => voice.leaveVoice()} title="disconnect">
-              ⏏
+              <HangupIcon />
             </CircleBtn>
           </>
         ) : (

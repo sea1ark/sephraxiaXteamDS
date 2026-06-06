@@ -452,14 +452,26 @@ export function handleRemoteCallEnd(): void {
 
 // --- Screen sharing & camera (work in both channel voice and calls) ---
 
+/** Screen-share quality. Capped by the source's real resolution. */
+export interface ScreenQuality {
+  height: number; // 720 | 1080 | 1440
+  fps: number; // 30 | 60
+}
+export const DEFAULT_SCREEN_QUALITY: ScreenQuality = { height: 1440, fps: 60 };
+
 /**
  * Start sharing a screen / window. `sourceId` comes from the screen-share
  * picker (Electron desktopCapturer). Uses the classic getUserMedia desktop
- * path, which is reliable on Windows.
+ * path, which is reliable on Windows. Defaults to 1440p 60fps.
  */
-export async function startScreenShare(sourceId: string): Promise<void> {
+export async function startScreenShare(
+  sourceId: string,
+  quality: ScreenQuality = DEFAULT_SCREEN_QUALITY,
+): Promise<void> {
   if (!session) return;
   if (screenStream) stopScreenShare();
+  const maxHeight = quality.height;
+  const maxWidth = Math.round((maxHeight * 16) / 9);
   let stream: MediaStream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({
@@ -468,9 +480,9 @@ export async function startScreenShare(sourceId: string): Promise<void> {
         mandatory: {
           chromeMediaSource: 'desktop',
           chromeMediaSourceId: sourceId,
-          maxWidth: 1920,
-          maxHeight: 1080,
-          maxFrameRate: 30,
+          maxWidth,
+          maxHeight,
+          maxFrameRate: quality.fps,
         },
       },
     } as unknown as MediaStreamConstraints);
@@ -499,11 +511,24 @@ export function stopScreenShare(): void {
   sounds.screenOff();
 }
 
+function camConstraint(): MediaTrackConstraints | boolean {
+  const id = store().cameraDeviceId;
+  return id ? { deviceId: { exact: id } } : true;
+}
+
+async function getCam(): Promise<MediaStream> {
+  try {
+    return await navigator.mediaDevices.getUserMedia({ video: camConstraint(), audio: false });
+  } catch {
+    return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  }
+}
+
 export async function startCamera(): Promise<void> {
   if (!session || camStream) return;
   let stream: MediaStream;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    stream = await getCam();
   } catch {
     alert('could not access your camera.');
     return;
@@ -620,6 +645,7 @@ export function toggleCamera(): void {
 export interface AudioDevices {
   inputs: MediaDeviceInfo[];
   outputs: MediaDeviceInfo[];
+  cameras: MediaDeviceInfo[];
 }
 
 export async function listDevices(): Promise<AudioDevices> {
@@ -628,9 +654,10 @@ export async function listDevices(): Promise<AudioDevices> {
     return {
       inputs: devices.filter((d) => d.kind === 'audioinput'),
       outputs: devices.filter((d) => d.kind === 'audiooutput'),
+      cameras: devices.filter((d) => d.kind === 'videoinput'),
     };
   } catch {
-    return { inputs: [], outputs: [] };
+    return { inputs: [], outputs: [], cameras: [] };
   }
 }
 
@@ -665,6 +692,29 @@ function applySink(el: HTMLAudioElement): void {
 export function setOutputDevice(deviceId: string | null): void {
   store().setOutputDeviceId(deviceId);
   for (const el of remoteAudio.values()) applySink(el);
+}
+
+/** Switch webcams. Applies live if the camera is already on. */
+export async function setCameraDevice(deviceId: string | null): Promise<void> {
+  store().setCameraDeviceId(deviceId);
+  if (!session || !camStream) return; // applies on next startCamera otherwise
+  let newStream: MediaStream;
+  try {
+    newStream = await getCam();
+  } catch {
+    return;
+  }
+  const newTrack = newStream.getVideoTracks()[0];
+  if (!newTrack) return;
+  const oldTracks = new Set(camStream.getVideoTracks());
+  for (const { pc } of peers.values()) {
+    const sender = pc.getSenders().find((s) => s.track !== null && oldTracks.has(s.track));
+    if (sender) await sender.replaceTrack(newTrack).catch(() => {});
+  }
+  camStream.getTracks().forEach((t) => t.stop());
+  camStream = newStream;
+  newStream.getVideoTracks()[0]?.addEventListener('ended', () => stopCamera());
+  store().bumpMedia();
 }
 
 // --- VAD plumbing ---

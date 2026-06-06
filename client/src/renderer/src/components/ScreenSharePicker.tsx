@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useUiStore } from '../store/ui';
 import * as voice from '../lib/voice';
+import { DEFAULT_SCREEN_QUALITY } from '../lib/voice';
 
 type DesktopSource = Awaited<ReturnType<typeof window.sephraxia.desktop.getSources>>[number];
 
@@ -12,6 +13,8 @@ export function ScreenSharePicker() {
   const close = useUiStore((s) => s.closeScreenPicker);
   const [sources, setSources] = useState<DesktopSource[]>([]);
   const [loading, setLoading] = useState(false);
+  const [height, setHeight] = useState(DEFAULT_SCREEN_QUALITY.height);
+  const [fps, setFps] = useState(DEFAULT_SCREEN_QUALITY.fps);
 
   useEffect(() => {
     if (!open) return;
@@ -27,7 +30,7 @@ export function ScreenSharePicker() {
   if (!open) return null;
 
   function pick(id: string) {
-    void voice.startScreenShare(id);
+    void voice.startScreenShare(id, { height, fps });
     close();
   }
 
@@ -61,11 +64,32 @@ export function ScreenSharePicker() {
         className="glass flex max-h-[80vh] w-full max-w-3xl flex-col rounded-glass"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-glass-border px-5 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-glass-border px-5 py-3">
           <span className="heading-glow text-sm font-semibold tracking-[0.12em]">share your screen</span>
-          <button onClick={close} className="text-text-muted transition hover:text-accent-pink">
-            ✕
-          </button>
+          <div className="flex items-center gap-2">
+            <select
+              value={height}
+              onChange={(e) => setHeight(Number(e.target.value))}
+              className="glass-input !w-auto !py-1 text-xs"
+              title="resolution"
+            >
+              <option value={720}>720p</option>
+              <option value={1080}>1080p</option>
+              <option value={1440}>1440p</option>
+            </select>
+            <select
+              value={fps}
+              onChange={(e) => setFps(Number(e.target.value))}
+              className="glass-input !w-auto !py-1 text-xs"
+              title="frame rate"
+            >
+              <option value={30}>30 fps</option>
+              <option value={60}>60 fps</option>
+            </select>
+            <button onClick={close} className="text-text-muted transition hover:text-accent-pink">
+              ✕
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">

@@ -27,6 +27,7 @@ interface VoiceState {
   speaking: Record<string, boolean>; // userId -> currently talking
   inputDeviceId: string | null; // selected microphone (persisted)
   outputDeviceId: string | null; // selected speakers (persisted)
+  cameraDeviceId: string | null; // selected webcam (persisted)
 
   // 1:1 calls + live media
   call: CallInfo;
@@ -47,6 +48,7 @@ interface VoiceState {
   clearSpeaking: () => void;
   setInputDeviceId: (id: string | null) => void;
   setOutputDeviceId: (id: string | null) => void;
+  setCameraDeviceId: (id: string | null) => void;
 
   // media + call actions
   setSharingScreen: (v: boolean) => void;
@@ -72,6 +74,7 @@ export const useVoiceStore = create<VoiceState>()(
       speaking: {},
       inputDeviceId: null,
       outputDeviceId: null,
+      cameraDeviceId: null,
 
       call: { status: 'idle', peerUserId: null },
       sharingScreen: false,
@@ -124,6 +127,7 @@ export const useVoiceStore = create<VoiceState>()(
       clearSpeaking: () => set({ speaking: {} }),
       setInputDeviceId: (inputDeviceId) => set({ inputDeviceId }),
       setOutputDeviceId: (outputDeviceId) => set({ outputDeviceId }),
+      setCameraDeviceId: (cameraDeviceId) => set({ cameraDeviceId }),
 
       setSharingScreen: (sharingScreen) => set({ sharingScreen }),
       setCameraOn: (cameraOn) => set({ cameraOn }),
@@ -147,7 +151,11 @@ export const useVoiceStore = create<VoiceState>()(
     {
       name: 'sephraxia-voice',
       // Only the device choices persist across restarts.
-      partialize: (s) => ({ inputDeviceId: s.inputDeviceId, outputDeviceId: s.outputDeviceId }),
+      partialize: (s) => ({
+        inputDeviceId: s.inputDeviceId,
+        outputDeviceId: s.outputDeviceId,
+        cameraDeviceId: s.cameraDeviceId,
+      }),
     },
   ),
 );

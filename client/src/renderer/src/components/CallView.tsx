@@ -11,6 +11,16 @@ import * as voice from '../lib/voice';
 import { nameColor } from '../lib/roles';
 import { ParticipantTile } from './ParticipantTile';
 import { ScreenTile } from './ScreenTile';
+import {
+  MicIcon,
+  MicOffIcon,
+  HeadsetIcon,
+  HeadsetOffIcon,
+  VideoIcon,
+  VideoOffIcon,
+  ScreenShareIcon,
+  HangupIcon,
+} from './icons';
 
 export function CallView() {
   const call = useVoiceStore((s) => s.call);
@@ -101,23 +111,23 @@ export function CallView() {
         {/* controls */}
         <div className="flex items-center justify-center gap-2.5 pb-5 pt-2">
           <CircleBtn active={muted} on={() => voice.toggleMute()} title={muted ? 'unmute' : 'mute'}>
-            {muted ? '🔇' : '🎙'}
+            {muted ? <MicOffIcon /> : <MicIcon />}
           </CircleBtn>
           <CircleBtn active={deafened} on={() => voice.toggleDeafen()} title={deafened ? 'undeafen' : 'deafen'}>
-            {deafened ? '🔈' : '🎧'}
+            {deafened ? <HeadsetOffIcon /> : <HeadsetIcon />}
           </CircleBtn>
           <CircleBtn active={cameraOn} on={() => voice.toggleCamera()} title={cameraOn ? 'stop camera' : 'start camera'}>
-            {cameraOn ? '📹' : '📷'}
+            {cameraOn ? <VideoIcon /> : <VideoOffIcon />}
           </CircleBtn>
           <CircleBtn
             active={sharingScreen}
             on={() => (sharingScreen ? voice.stopScreenShare() : openPicker())}
             title={sharingScreen ? 'stop sharing' : 'share screen'}
           >
-            🖥
+            <ScreenShareIcon />
           </CircleBtn>
           <CircleBtn danger on={() => voice.endCall()} title="hang up">
-            ⏏
+            <HangupIcon />
           </CircleBtn>
         </div>
       </div>

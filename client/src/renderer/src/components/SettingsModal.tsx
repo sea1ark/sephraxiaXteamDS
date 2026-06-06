@@ -26,14 +26,16 @@ export function SettingsModal() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [devices, setDevices] = useState<{ inputs: MediaDeviceInfo[]; outputs: MediaDeviceInfo[] }>({
-    inputs: [],
-    outputs: [],
-  });
+  const [devices, setDevices] = useState<{
+    inputs: MediaDeviceInfo[];
+    outputs: MediaDeviceInfo[];
+    cameras: MediaDeviceInfo[];
+  }>({ inputs: [], outputs: [], cameras: [] });
   const fileInput = useRef<HTMLInputElement>(null);
 
   const inputDeviceId = useVoiceStore((s) => s.inputDeviceId);
   const outputDeviceId = useVoiceStore((s) => s.outputDeviceId);
+  const cameraDeviceId = useVoiceStore((s) => s.cameraDeviceId);
 
   // Seed the form from the current user whenever the modal opens.
   useEffect(() => {
@@ -87,17 +89,28 @@ export function SettingsModal() {
 
         <div className="mb-5 flex items-center gap-4">
           <Avatar username={user.username} avatarUrl={avatarUrl || null} size={64} />
-          <div>
-            <p className="text-base font-semibold text-text-heading">{user.username}</p>
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              disabled={uploading}
-              className="mt-1 rounded-glass px-3 py-1.5 text-xs text-text-primary transition hover:text-accent-violet"
-              style={{ background: 'rgba(125,111,196,0.12)', border: '1px solid rgba(180,160,240,0.14)' }}
-            >
-              {uploading ? 'uploading…' : 'upload image'}
-            </button>
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold text-text-heading">{user.username}</p>
+            <div className="mt-1.5 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileInput.current?.click()}
+                disabled={uploading}
+                className="rounded-glass px-3 py-1.5 text-xs text-text-primary transition hover:text-accent-violet"
+                style={{ background: 'rgba(125,111,196,0.12)', border: '1px solid rgba(180,160,240,0.14)' }}
+              >
+                {uploading ? 'uploading…' : 'upload image'}
+              </button>
+              {avatarUrl && (
+                <button
+                  type="button"
+                  onClick={() => setAvatarUrl('')}
+                  className="text-xs text-text-muted transition hover:text-accent-pink"
+                >
+                  remove
+                </button>
+              )}
+            </div>
             <input
               ref={fileInput}
               type="file"
@@ -111,15 +124,6 @@ export function SettingsModal() {
             />
           </div>
         </div>
-
-        <label className="section-label mb-1 block">or paste an image url</label>
-        <input
-          className="glass-input mb-1"
-          placeholder="https://… or leave empty"
-          value={avatarUrl}
-          onChange={(e) => setAvatarUrl(e.target.value)}
-        />
-        <p className="mb-4 text-[11px] text-text-muted">paste a link to a png/jpg. clear it to remove.</p>
 
         <label className="section-label mb-2 block">status</label>
         <div className="mb-5 flex gap-2">
@@ -144,33 +148,56 @@ export function SettingsModal() {
           ))}
         </div>
 
-        <label className="section-label mb-2 block">voice — microphone</label>
-        <select
-          className="glass-input mb-3"
-          value={inputDeviceId ?? ''}
-          onChange={(e) => voice.setInputDevice(e.target.value || null)}
-        >
-          <option value="">default microphone</option>
-          {devices.inputs.map((d, i) => (
-            <option key={d.deviceId} value={d.deviceId}>
-              {d.label || `microphone ${i + 1}`}
-            </option>
-          ))}
-        </select>
+        <p className="section-label mb-2">voice &amp; video</p>
+        <div className="mb-5 space-y-2">
+          <label className="block">
+            <span className="mb-1 block text-[11px] text-text-muted">microphone</span>
+            <select
+              className="glass-input"
+              value={inputDeviceId ?? ''}
+              onChange={(e) => voice.setInputDevice(e.target.value || null)}
+            >
+              <option value="">default microphone</option>
+              {devices.inputs.map((d, i) => (
+                <option key={d.deviceId} value={d.deviceId}>
+                  {d.label || `microphone ${i + 1}`}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <label className="section-label mb-2 block">voice — speakers</label>
-        <select
-          className="glass-input mb-5"
-          value={outputDeviceId ?? ''}
-          onChange={(e) => voice.setOutputDevice(e.target.value || null)}
-        >
-          <option value="">default speakers</option>
-          {devices.outputs.map((d, i) => (
-            <option key={d.deviceId} value={d.deviceId}>
-              {d.label || `speakers ${i + 1}`}
-            </option>
-          ))}
-        </select>
+          <label className="block">
+            <span className="mb-1 block text-[11px] text-text-muted">speakers</span>
+            <select
+              className="glass-input"
+              value={outputDeviceId ?? ''}
+              onChange={(e) => voice.setOutputDevice(e.target.value || null)}
+            >
+              <option value="">default speakers</option>
+              {devices.outputs.map((d, i) => (
+                <option key={d.deviceId} value={d.deviceId}>
+                  {d.label || `speakers ${i + 1}`}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-[11px] text-text-muted">camera</span>
+            <select
+              className="glass-input"
+              value={cameraDeviceId ?? ''}
+              onChange={(e) => voice.setCameraDevice(e.target.value || null)}
+            >
+              <option value="">default camera</option>
+              {devices.cameras.map((d, i) => (
+                <option key={d.deviceId} value={d.deviceId}>
+                  {d.label || `camera ${i + 1}`}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
         {error && <p className="mb-3 text-sm text-accent-pink">{error}</p>}
 
