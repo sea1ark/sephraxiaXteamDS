@@ -12,7 +12,7 @@ export function DmList() {
   const openDm = useUiStore((s) => s.openDm);
 
   return (
-    <div className="glass flex w-60 flex-col rounded-glass">
+    <div className="sx-fade glass flex w-60 flex-col rounded-glass">
       <div className="border-b border-glass-border px-4 py-3">
         <span className="heading-glow text-sm font-semibold tracking-[0.15em]">direct messages</span>
       </div>

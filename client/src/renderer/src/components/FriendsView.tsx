@@ -121,7 +121,7 @@ export function FriendsView() {
     'rounded-glass px-3 py-1 text-xs transition';
 
   return (
-    <div className="glass flex min-w-0 flex-1 flex-col rounded-glass">
+    <div className="sx-fade glass flex min-w-0 flex-1 flex-col rounded-glass">
       <div className="flex items-center gap-2 border-b border-glass-border px-5 py-3">
         <span className="text-lg">✦</span>
         <span className="heading-glow text-sm font-semibold tracking-[0.12em]">friends</span>

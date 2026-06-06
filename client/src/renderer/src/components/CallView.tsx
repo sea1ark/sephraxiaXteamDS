@@ -88,7 +88,7 @@ export function CallView() {
   return (
     <div className="pointer-events-none fixed inset-0 z-40 grid place-items-center p-4">
       <div
-        className="glass pointer-events-auto flex flex-col rounded-glass"
+        className="sx-pop glass pointer-events-auto flex flex-col rounded-glass"
         style={{ width: 'min(940px, 94vw)', height: 'min(660px, 90vh)', border: '1px solid rgba(108,212,126,0.25)' }}
       >
         {/* header */}

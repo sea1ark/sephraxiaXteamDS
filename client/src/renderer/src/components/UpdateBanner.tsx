@@ -30,7 +30,7 @@ export function UpdateBanner() {
         : `v${version ?? ''}`;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-80 overflow-hidden rounded-glass border border-accent-violet/40 bg-[#0c0a16]/95 shadow-glow-violet backdrop-blur-glass">
+    <div className="sx-slide-up fixed bottom-4 right-4 z-50 w-80 overflow-hidden rounded-glass border border-accent-violet/40 bg-[#0c0a16]/95 shadow-glow-violet backdrop-blur-glass">
       <button
         onClick={error ? () => window.sephraxia.updater.check() : install}
         className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-accent-violet/10"

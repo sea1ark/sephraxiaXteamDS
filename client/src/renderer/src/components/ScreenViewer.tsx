@@ -29,7 +29,7 @@ export function ScreenViewer() {
 
   return (
     <div
-      className="fixed inset-0 z-[55] flex flex-col"
+      className="sx-overlay fixed inset-0 z-[55] flex flex-col"
       style={{ background: 'rgba(3,2,7,0.94)' }}
       onClick={close}
     >

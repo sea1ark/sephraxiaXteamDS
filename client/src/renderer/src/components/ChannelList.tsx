@@ -88,7 +88,7 @@ export function ChannelList() {
     ) : null;
 
   return (
-    <div className="glass flex w-60 flex-col rounded-glass">
+    <div className="sx-fade glass flex w-60 flex-col rounded-glass">
       <div className="flex items-center justify-between border-b border-glass-border px-4 py-3">
         <span className="heading-glow text-sm font-semibold tracking-[0.15em]">home</span>
         <div className="flex items-center gap-2">

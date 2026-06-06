@@ -94,7 +94,7 @@ export function ChannelContextMenu() {
     <>
       <div className="fixed inset-0 z-[55]" onClick={close} onContextMenu={(e) => { e.preventDefault(); close(); }} />
       <div
-        className="glass fixed z-[56] w-[220px] rounded-glass p-1.5"
+        className="sx-menu glass fixed z-[56] w-[220px] rounded-glass p-1.5"
         style={{ left, top, boxShadow: '0 16px 40px rgba(0,0,0,0.5)' }}
         onClick={(e) => e.stopPropagation()}
       >

@@ -107,12 +107,12 @@ export function SettingsModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/50"
+      className="sx-overlay fixed inset-0 z-50 grid place-items-center bg-black/50"
       onClick={close}
       style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
     >
       <div
-        className="glass max-h-[88vh] w-[440px] overflow-y-auto rounded-glass p-6"
+        className="sx-pop glass max-h-[88vh] w-[440px] overflow-y-auto rounded-glass p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="heading-glow mb-4 text-lg font-semibold tracking-[0.15em]">my profile</h2>

@@ -119,45 +119,65 @@ export function ProfileModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-md"
+      className="sx-overlay fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-md"
       onClick={close}
       style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
     >
       <div
-        className="w-[420px] overflow-hidden rounded-[20px]"
+        className="sx-pop w-[420px] overflow-hidden rounded-[22px]"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'linear-gradient(180deg, rgba(20,16,30,0.97), rgba(8,6,14,0.99))',
+          background: 'linear-gradient(180deg, rgba(22,17,33,0.98), rgba(8,6,14,0.99))',
           border: '1px solid rgba(180,160,240,0.16)',
-          boxShadow: `0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px ${accent}22, 0 0 50px ${accent}22`,
+          boxShadow: `0 36px 90px rgba(0,0,0,0.65), 0 0 0 1px ${accent}22, 0 0 60px ${accent}26`,
         }}
       >
         {/* banner */}
         <div
-          className="relative h-32"
+          className="relative h-36 overflow-hidden"
           style={
             banner
               ? undefined
               : {
-                  background: `radial-gradient(120% 160% at 20% 0%, ${accent}cc, ${accent}55 40%, transparent 75%), linear-gradient(120deg, ${accent}, #8c2f55)`,
+                  background: `radial-gradient(130% 170% at 18% 0%, ${accent}d0, ${accent}55 42%, transparent 78%), linear-gradient(120deg, ${accent}, #8c2f55)`,
                 }
           }
         >
           {banner && <img src={banner} alt="" className="h-full w-full object-cover" />}
+          {/* slow drifting sheen — pure transform, barely there */}
+          <div
+            className="pointer-events-none absolute -inset-1/4 opacity-50"
+            style={{
+              background: `radial-gradient(40% 40% at 50% 50%, ${banner ? 'rgba(255,255,255,0.12)' : `${accent}66`}, transparent 70%)`,
+              animation: 'sx-sheen 9s ease-in-out infinite',
+              willChange: 'transform',
+            }}
+          />
           <div
             className="absolute inset-0"
-            style={{ background: 'linear-gradient(180deg, transparent 40%, rgba(8,6,14,0.7))' }}
+            style={{ background: 'linear-gradient(180deg, transparent 38%, rgba(8,6,14,0.78))' }}
           />
         </div>
 
         <div className="relative z-10 px-6 pb-6">
           {/* avatar overlapping the banner */}
-          <div className="-mt-14 mb-3 flex items-end justify-between">
-            <div
-              className="rounded-full p-1.5"
-              style={{ background: '#0a0810', boxShadow: `0 0 0 2px ${accent}, 0 0 24px ${accent}66` }}
-            >
-              <Avatar username={name} avatarUrl={u?.avatarUrl} size={92} color={accent} />
+          <div className="-mt-16 mb-3 flex items-end justify-between">
+            <div className="relative">
+              <div
+                className="rounded-full p-[5px]"
+                style={{ background: '#0a0810', boxShadow: `0 0 0 2px ${accent}, 0 0 28px ${accent}77` }}
+              >
+                <Avatar username={name} avatarUrl={u?.avatarUrl} size={94} color={accent} />
+              </div>
+              {/* status dot, Discord-style */}
+              <span
+                className="absolute bottom-1.5 right-1.5 h-6 w-6 rounded-full"
+                style={{ background: '#0a0810' }}
+              >
+                <span
+                  className={`status-dot ${STATUS_CLASS[status]} absolute left-1/2 top-1/2 !h-4 !w-4 -translate-x-1/2 -translate-y-1/2`}
+                />
+              </span>
             </div>
             {u?.isOwner && (
               <span

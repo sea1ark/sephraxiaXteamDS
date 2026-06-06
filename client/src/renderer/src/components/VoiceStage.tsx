@@ -85,7 +85,7 @@ export function VoiceStage({ channelId }: { channelId: string }) {
   );
 
   return (
-    <div className="glass relative flex min-w-0 flex-1 flex-col rounded-glass">
+    <div className="sx-fade glass relative flex min-w-0 flex-1 flex-col rounded-glass">
       {/* header */}
       <div className="flex items-center justify-between border-b border-glass-border px-5 py-3">
         <div className="flex items-center gap-2">

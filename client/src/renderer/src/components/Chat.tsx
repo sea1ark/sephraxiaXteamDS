@@ -127,7 +127,7 @@ export function Chat() {
 
   return (
     <div
-      className="glass relative flex min-w-0 flex-1 flex-col rounded-glass"
+      className="sx-fade glass relative flex min-w-0 flex-1 flex-col rounded-glass"
       onDragOver={(e) => {
         e.preventDefault();
         if (!dragging) setDragging(true);

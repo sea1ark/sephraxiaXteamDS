@@ -20,11 +20,11 @@ export function MediaViewer() {
 
   return (
     <div
-      className="fixed inset-0 z-[60] grid place-items-center bg-black/80 backdrop-blur-sm"
+      className="sx-overlay fixed inset-0 z-[60] grid place-items-center bg-black/80 backdrop-blur-sm"
       onClick={close}
       style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
     >
-      <div className="relative max-h-[90vh] max-w-[92vw]" onClick={(e) => e.stopPropagation()}>
+      <div className="sx-pop relative max-h-[90vh] max-w-[92vw]" onClick={(e) => e.stopPropagation()}>
         {media.kind === 'image' && (
           <img
             src={media.url}

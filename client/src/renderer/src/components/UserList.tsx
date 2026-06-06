@@ -17,7 +17,7 @@ export function UserList() {
   const offline = users.filter((u) => u.status === 'offline');
 
   return (
-    <div className="glass flex w-56 flex-col rounded-glass">
+    <div className="sx-fade glass flex w-56 flex-col rounded-glass">
       <div className="space-y-4 overflow-y-auto px-3 py-4">
         <Section label={`online — ${online.length}`} users={online} />
         {offline.length > 0 && <Section label={`offline — ${offline.length}`} users={offline} dim />}

@@ -49,9 +49,9 @@ export function BansModal() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60" onClick={close}>
+    <div className="sx-overlay fixed inset-0 z-50 grid place-items-center bg-black/60" onClick={close}>
       <div
-        className="glass flex max-h-[80vh] w-[440px] flex-col rounded-glass"
+        className="sx-pop glass flex max-h-[80vh] w-[440px] flex-col rounded-glass"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-glass-border px-5 py-3">

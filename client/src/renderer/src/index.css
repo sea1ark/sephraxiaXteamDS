@@ -127,3 +127,99 @@
   pointer-events: none;
   z-index: 0;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Motion system. Everything below animates ONLY transform/opacity (GPU
+   compositor — no layout/paint), uses short durations and a single shared
+   easing so the whole app feels consistent and stays smooth. Animations run
+   once on element mount (React only recreates a node when it (un)mounts or its
+   key changes), so re-renders never re-trigger them.
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --sx-ease: cubic-bezier(0.16, 1, 0.3, 1); /* easeOutExpo-ish */
+  --sx-ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes sx-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sx-pop-in {
+  from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sx-slide-up {
+  from { opacity: 0; transform: translate3d(0, 12px, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sx-slide-in-left {
+  from { opacity: 0; transform: translate3d(-14px, 0, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sx-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sx-menu-in {
+  from { opacity: 0; transform: scale(0.95) translate3d(0, -4px, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sx-ring-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.06); opacity: 0.35; }
+}
+@keyframes sx-sheen {
+  0% { transform: translate3d(-30%, -20%, 0); }
+  50% { transform: translate3d(30%, 20%, 0); }
+  100% { transform: translate3d(-30%, -20%, 0); }
+}
+@keyframes sx-spin {
+  to { transform: rotate(360deg); }
+}
+
+@layer utilities {
+  .sx-overlay { animation: sx-overlay-in 0.18s var(--sx-ease-soft) both; }
+  .sx-pop { animation: sx-pop-in 0.28s var(--sx-ease) both; }
+  .sx-slide-up { animation: sx-slide-up 0.3s var(--sx-ease) both; }
+  .sx-slide-left { animation: sx-slide-in-left 0.28s var(--sx-ease) both; }
+  .sx-fade { animation: sx-fade-in 0.22s var(--sx-ease-soft) both; }
+  .sx-menu { animation: sx-menu-in 0.14s var(--sx-ease) both; transform-origin: top left; }
+
+  /* Hover-lift for cards/tiles (compositor-only). */
+  .sx-lift { transition: transform 0.2s var(--sx-ease), box-shadow 0.2s var(--sx-ease); will-change: transform; }
+  .sx-lift:hover { transform: translateY(-2px); }
+}
+
+/* Global micro-interaction polish: smooth interactive transitions + a subtle
+   press on click. Kept to transform/opacity/colour so it's effectively free. */
+button,
+a,
+[role='button'] {
+  transition:
+    transform 0.12s var(--sx-ease-soft),
+    background-color 0.16s var(--sx-ease-soft),
+    color 0.16s var(--sx-ease-soft),
+    box-shadow 0.18s var(--sx-ease-soft),
+    opacity 0.16s var(--sx-ease-soft),
+    filter 0.16s var(--sx-ease-soft);
+}
+button:not(:disabled):active,
+[role='button']:active {
+  transform: scale(0.97);
+}
+
+/* The accent button gets a touch more travel + lift. */
+.btn-accent { will-change: transform; }
+.btn-accent:hover { transform: translateY(-1px); }
+.btn-accent:not(:disabled):active { transform: scale(0.98); }
+
+/* Respect reduced-motion: drop all of the above to instant. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

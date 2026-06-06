@@ -56,12 +56,12 @@ export function ScreenSharePicker() {
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center p-6"
+      className="sx-overlay fixed inset-0 z-50 grid place-items-center p-6"
       style={{ background: 'rgba(5,4,9,0.7)', backdropFilter: 'blur(4px)' }}
       onClick={close}
     >
       <div
-        className="glass flex max-h-[80vh] w-full max-w-3xl flex-col rounded-glass"
+        className="sx-pop glass flex max-h-[80vh] w-full max-w-3xl flex-col rounded-glass"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3 border-b border-glass-border px-5 py-3">

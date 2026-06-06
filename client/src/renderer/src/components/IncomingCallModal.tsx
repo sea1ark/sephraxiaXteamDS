@@ -26,11 +26,11 @@ export function IncomingCallModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[60] grid place-items-center p-6"
+      className="sx-overlay fixed inset-0 z-[60] grid place-items-center p-6"
       style={{ background: 'rgba(5,4,9,0.7)', backdropFilter: 'blur(4px)' }}
     >
       <div
-        className="glass flex w-full max-w-sm flex-col items-center rounded-glass px-8 py-7 text-center"
+        className="sx-pop glass flex w-full max-w-sm flex-col items-center rounded-glass px-8 py-7 text-center"
         style={{ border: '1px solid rgba(108,212,126,0.3)' }}
       >
         <div

@@ -61,7 +61,7 @@ export function Login() {
       )}
       <form
         onSubmit={submit}
-        className="glass w-[360px] rounded-glass p-8"
+        className="sx-pop glass w-[360px] rounded-glass p-8"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         <h1 className="heading-glow mb-1 text-2xl font-semibold tracking-[0.2em]">sephraxia</h1>
