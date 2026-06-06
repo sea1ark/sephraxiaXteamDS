@@ -6,6 +6,7 @@ import { useVoiceStore } from '../store/voice';
 import { useChatStore } from '../store/chat';
 import { useAuthStore } from '../store/auth';
 import * as voice from '../lib/voice';
+import { displayName } from '../lib/roles';
 import { VideoTile } from './VideoTile';
 
 export function ScreenViewer() {
@@ -34,7 +35,7 @@ export function ScreenViewer() {
     >
       <div className="flex items-center justify-between px-5 py-3">
         <span className="heading-glow text-sm font-semibold">
-          {userId === myId ? 'your screen' : `${sharer?.username ?? 'user'}'s screen`}
+          {userId === myId ? 'your screen' : `${displayName(sharer)}'s screen`}
         </span>
         <button onClick={close} className="text-text-muted transition hover:text-accent-pink" title="close (esc)">
           ✕

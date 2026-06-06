@@ -6,7 +6,7 @@ import { api, ApiError } from '../lib/api';
 import { useChatStore } from '../store/chat';
 import { useUiStore } from '../store/ui';
 import { Avatar } from './Avatar';
-import { nameColor } from '../lib/roles';
+import { nameColor, displayName } from '../lib/roles';
 
 const STATUS_CLASS: Record<string, string> = {
   online: 'status-online',
@@ -101,16 +101,16 @@ export function FriendsView() {
         className="flex items-center gap-3 rounded-glass px-3 py-2 transition hover:bg-[rgba(125,111,196,0.08)]"
       >
         <button onClick={() => openProfile(user.id)} className="relative">
-          <Avatar username={user.username} avatarUrl={user.avatarUrl} size={36} color={nameColor(user)} />
+          <Avatar username={displayName(user)} avatarUrl={user.avatarUrl} size={36} color={nameColor(user)} />
           <span
             className={`status-dot ${STATUS_CLASS[user.status] ?? 'status-offline'} absolute -bottom-0.5 -right-0.5 ring-2 ring-base`}
           />
         </button>
         <button onClick={() => openProfile(user.id)} className="min-w-0 flex-1 text-left">
           <div className="truncate text-sm font-medium" style={{ color: nameColor(user) }}>
-            {user.username}
+            {displayName(user)}
           </div>
-          <div className="text-[11px] text-text-muted">{user.status}</div>
+          <div className="truncate text-[11px] text-text-muted">@{user.username}</div>
         </button>
         <div className="flex shrink-0 items-center gap-1.5">{children}</div>
       </div>

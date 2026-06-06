@@ -3,7 +3,7 @@ import { useChatStore } from '../store/chat';
 import { useUiStore } from '../store/ui';
 import { Avatar } from './Avatar';
 import { UserFooter } from './UserFooter';
-import { nameColor } from '../lib/roles';
+import { nameColor, displayName } from '../lib/roles';
 
 export function DmList() {
   const conversations = useChatStore((s) => s.dmConversations);
@@ -26,13 +26,13 @@ export function DmList() {
               onClick={() => openDm(c.user.id)}
               className={`channel-item !py-2 ${c.user.id === activeDmUserId ? 'active' : ''}`}
             >
-              <Avatar username={c.user.username} avatarUrl={c.user.avatarUrl} size={28} />
+              <Avatar username={displayName(c.user)} avatarUrl={c.user.avatarUrl} size={28} />
               <div className="min-w-0 flex-1">
                 <div
                   className={`truncate text-sm ${isUnread ? 'font-semibold text-text-heading' : ''}`}
                   style={{ color: nameColor(c.user) }}
                 >
-                  {c.user.username}
+                  {displayName(c.user)}
                 </div>
                 {c.lastMessage && (
                   <div

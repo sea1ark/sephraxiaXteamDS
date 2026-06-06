@@ -36,8 +36,10 @@ export async function authRoutes(app: FastifyInstance) {
     // The very first registered user becomes the owner (bypasses permissions).
     const isFirstUser = (await prisma.user.count()) === 0;
     const passwordHash = await bcrypt.hash(password, 10);
+    // Sequential public UID — a seniority marker (1, 2, 3…).
+    const maxUid = (await prisma.user.aggregate({ _max: { uid: true } }))._max.uid ?? 0;
     const user = await prisma.user.create({
-      data: { username, passwordHash, status: 'online', isOwner: isFirstUser },
+      data: { username, passwordHash, status: 'online', isOwner: isFirstUser, uid: maxUid + 1 },
     });
 
     return reply.code(201).send(buildAuthResponse(toPublicUser(user)));

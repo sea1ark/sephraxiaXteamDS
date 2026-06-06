@@ -5,7 +5,7 @@
 import type { PublicUser } from '@sephraxia/shared';
 import { Avatar } from './Avatar';
 import { VideoTile } from './VideoTile';
-import { nameColor } from '../lib/roles';
+import { nameColor, displayName } from '../lib/roles';
 import { MicOffIcon } from './icons';
 
 /** Deterministic muted gradient per user (stands in for a Discord accent color). */
@@ -27,7 +27,7 @@ interface Props {
 }
 
 export function ParticipantTile({ user, fallbackName, muted, speaking, stream, mirror, label }: Props) {
-  const name = user?.username ?? fallbackName ?? 'user';
+  const name = user ? displayName(user) : fallbackName ?? 'user';
   const c = tileColors(user?.id ?? name);
 
   return (

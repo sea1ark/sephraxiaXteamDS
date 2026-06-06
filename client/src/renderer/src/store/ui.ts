@@ -37,6 +37,7 @@ interface UiState {
   profileUserId: string | null; // user whose profile card is open
   settingsOpen: boolean;
   rolesOpen: boolean; // role-management modal
+  bansOpen: boolean; // banned-users management modal
 
   media: MediaTarget | null; // media lightbox
   memberMenu: MemberMenuState | null; // right-click member menu
@@ -57,6 +58,8 @@ interface UiState {
   closeSettings: () => void;
   openRoles: () => void;
   closeRoles: () => void;
+  openBans: () => void;
+  closeBans: () => void;
 
   openMedia: (media: MediaTarget) => void;
   closeMedia: () => void;
@@ -81,6 +84,7 @@ export const useUiStore = create<UiState>((set) => ({
   profileUserId: null,
   settingsOpen: false,
   rolesOpen: false,
+  bansOpen: false,
 
   media: null,
   memberMenu: null,
@@ -102,6 +106,8 @@ export const useUiStore = create<UiState>((set) => ({
   closeSettings: () => set({ settingsOpen: false }),
   openRoles: () => set({ rolesOpen: true }),
   closeRoles: () => set({ rolesOpen: false }),
+  openBans: () => set({ bansOpen: true }),
+  closeBans: () => set({ bansOpen: false }),
 
   openMedia: (media) => set({ media }),
   closeMedia: () => set({ media: null }),

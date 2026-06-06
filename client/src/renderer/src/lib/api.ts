@@ -119,6 +119,27 @@ export const api = {
     return res.json() as Promise<PublicUser>;
   },
 
+  // Banner file upload (multipart). Returns the updated user.
+  uploadBanner: async (file: File): Promise<PublicUser> => {
+    const { accessToken } = useAuthStore.getState();
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(`${SERVER_URL}/users/me/banner`, {
+      method: 'POST',
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      body: form,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new ApiError(res.status, body.error ?? 'upload failed');
+    }
+    return res.json() as Promise<PublicUser>;
+  },
+
+  // Owner-only: change a user's public UID.
+  setUserUid: (id: string, uid: number) =>
+    request<PublicUser>(`/users/${id}/uid`, { method: 'PATCH', body: JSON.stringify({ uid }) }),
+
   // Upload an arbitrary file as a message attachment; returns its metadata.
   uploadFile: async (file: File): Promise<Attachment> => {
     const { accessToken } = useAuthStore.getState();

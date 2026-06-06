@@ -11,7 +11,7 @@ import * as voice from '../lib/voice';
 import { useAttachments } from '../lib/useAttachments';
 import { useVoiceRecorder } from '../lib/useVoiceRecorder';
 import { Avatar } from './Avatar';
-import { nameColor } from '../lib/roles';
+import { nameColor, displayName } from '../lib/roles';
 import { DmMessageItem } from './DmMessageItem';
 import { AttachmentTray } from './AttachmentTray';
 import { ReplyBar } from './ReplyBar';
@@ -128,10 +128,11 @@ export function DmChat() {
     >
       <div className="flex items-center justify-between border-b border-glass-border px-5 py-3">
         <button onClick={() => openProfile(partner.id)} className="flex min-w-0 items-center gap-2">
-          <Avatar username={partner.username} avatarUrl={partner.avatarUrl} size={26} />
+          <Avatar username={displayName(partner)} avatarUrl={partner.avatarUrl} size={26} />
           <span className="heading-glow truncate text-sm font-semibold" style={{ color: nameColor(partner) }}>
-            {partner.username}
+            {displayName(partner)}
           </span>
+          <span className="truncate text-[11px] text-text-muted">@{partner.username}</span>
         </button>
         <button
           onClick={() => voice.startCall(partner.id)}

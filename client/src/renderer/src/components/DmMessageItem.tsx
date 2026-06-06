@@ -7,7 +7,7 @@ import { useAuthStore } from '../store/auth';
 import { useChatStore } from '../store/chat';
 import { useUiStore } from '../store/ui';
 import { getSocket } from '../lib/socket';
-import { nameColor } from '../lib/roles';
+import { nameColor, displayName } from '../lib/roles';
 import { Avatar } from './Avatar';
 import { MessageAttachments } from './MessageAttachments';
 import { ReplyPreviewLine } from './ReplyPreviewLine';
@@ -49,8 +49,8 @@ export function DmMessageItem({ message }: { message: DirectMessage }) {
 
   return (
     <div className="group flex gap-3">
-      <button onClick={() => from && openProfile(from.id)} title={from?.username}>
-        <Avatar username={from?.username ?? '?'} avatarUrl={from?.avatarUrl} color={color} size={32} />
+      <button onClick={() => from && openProfile(from.id)} title={from ? `@${from.username}` : undefined}>
+        <Avatar username={displayName(from)} avatarUrl={from?.avatarUrl} color={color} size={32} />
       </button>
 
       <div className="min-w-0 flex-1">
@@ -62,7 +62,7 @@ export function DmMessageItem({ message }: { message: DirectMessage }) {
             className="cursor-pointer text-sm font-semibold hover:underline"
             style={{ color }}
           >
-            {from?.username ?? 'unknown'}
+            {displayName(from)}
           </span>
           <span className="text-[11px] text-text-muted">
             {new Date(message.createdAt).toLocaleTimeString([], {

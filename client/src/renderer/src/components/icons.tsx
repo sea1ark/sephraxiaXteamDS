@@ -178,3 +178,10 @@ export const SendIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const BanIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M5.6 5.6 18.4 18.4" />
+  </Svg>
+);
+

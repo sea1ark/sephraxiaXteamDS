@@ -3,7 +3,7 @@ import type { Message, PublicUser } from '@sephraxia/shared';
 import { useAuthStore } from '../store/auth';
 import { useUiStore } from '../store/ui';
 import { getSocket } from '../lib/socket';
-import { nameColor, roleSymbol } from '../lib/roles';
+import { nameColor, roleSymbol, displayName } from '../lib/roles';
 import { Avatar } from './Avatar';
 import { MessageAttachments } from './MessageAttachments';
 import { ReplyPreviewLine } from './ReplyPreviewLine';
@@ -56,9 +56,9 @@ export function MessageItem({ message, author }: { message: Message; author?: Pu
       <button
         onClick={() => author && openProfile(author.id)}
         onContextMenu={onAuthorContext}
-        title={author?.username}
+        title={author ? `@${author.username}` : undefined}
       >
-        <Avatar username={author?.username ?? '?'} avatarUrl={author?.avatarUrl} color={color} />
+        <Avatar username={displayName(author)} avatarUrl={author?.avatarUrl} color={color} />
       </button>
 
       <div className="min-w-0 flex-1">
@@ -72,7 +72,7 @@ export function MessageItem({ message, author }: { message: Message; author?: Pu
             style={{ color }}
           >
             {symbol && <span className="mr-1">{symbol}</span>}
-            {author?.username ?? 'unknown'}
+            {displayName(author)}
           </span>
           <span className="text-[11px] text-text-muted">
             {new Date(message.createdAt).toLocaleTimeString([], {

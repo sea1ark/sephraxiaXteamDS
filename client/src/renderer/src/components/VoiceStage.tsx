@@ -8,6 +8,7 @@ import { useAuthStore } from '../store/auth';
 import { useUiStore } from '../store/ui';
 import { useVoiceStore } from '../store/voice';
 import * as voice from '../lib/voice';
+import { displayName } from '../lib/roles';
 import { ParticipantTile } from './ParticipantTile';
 import { ScreenTile } from './ScreenTile';
 import {
@@ -56,12 +57,12 @@ export function VoiceStage({ channelId }: { channelId: string }) {
       <Cell key={p.userId}>
         <ParticipantTile
           user={u}
-          fallbackName={isMe ? me?.username : undefined}
+          fallbackName={isMe ? displayName(me ?? undefined) : undefined}
           muted={p.muted}
           speaking={!!speaking[p.userId]}
           stream={cam}
           mirror={isMe}
-          label={isMe ? `${u?.username ?? me?.username ?? 'you'} (you)` : u?.username}
+          label={isMe ? `${displayName(u ?? me ?? undefined)} (you)` : displayName(u)}
         />
       </Cell>,
     );
@@ -70,7 +71,7 @@ export function VoiceStage({ channelId }: { channelId: string }) {
         <Cell key={`${p.userId}:screen`}>
           <ScreenTile
             stream={scr}
-            label={`${isMe ? 'you' : u?.username ?? 'user'} · screen`}
+            label={`${isMe ? 'you' : displayName(u)} · screen`}
             onClick={() => openScreenView(p.userId)}
           />
         </Cell>,

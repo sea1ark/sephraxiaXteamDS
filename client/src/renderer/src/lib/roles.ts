@@ -17,3 +17,10 @@ export function nameColor(user: Pick<PublicUser, 'roles'> | undefined): string {
 export function roleSymbol(user: Pick<PublicUser, 'roles'> | undefined): string {
   return topRole(user)?.symbol ?? '';
 }
+
+/** The name to show: chosen display name, falling back to the @username. */
+export function displayName(
+  user: Pick<PublicUser, 'displayName' | 'username'> | undefined,
+): string {
+  return user?.displayName?.trim() || user?.username || 'unknown';
+}

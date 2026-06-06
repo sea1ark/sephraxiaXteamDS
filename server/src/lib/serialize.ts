@@ -36,12 +36,16 @@ interface DbRole {
 
 interface DbUser {
   id: string;
+  uid?: number | null;
   username: string;
+  displayName?: string | null;
   avatarUrl: string | null;
+  bannerUrl?: string | null;
   status: string;
   isOwner: boolean;
   createdAt: Date;
   mutedUntil?: Date | null;
+  bannedAt?: Date | null;
   roles?: DbRole[];
 }
 
@@ -66,12 +70,16 @@ export function toPublicUser(u: DbUser): PublicUser {
   const muted = u.mutedUntil && u.mutedUntil.getTime() > Date.now() ? u.mutedUntil.toISOString() : null;
   return {
     id: u.id,
+    uid: u.uid ?? null,
     username: u.username,
+    displayName: u.displayName ?? null,
     avatarUrl: u.avatarUrl,
+    bannerUrl: u.bannerUrl ?? null,
     status: u.status as PublicUser['status'],
     isOwner: u.isOwner,
     createdAt: u.createdAt.toISOString(),
     mutedUntil: muted,
+    banned: u.bannedAt != null ? true : undefined,
     roles: u.roles ? u.roles.map(toRole) : undefined,
   };
 }

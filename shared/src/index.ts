@@ -7,8 +7,11 @@ export type ChannelType = 'text' | 'voice';
 
 export interface User {
   id: string;
-  username: string;
+  uid: number | null; // sequential public id (1, 2, 3…); null until assigned
+  username: string; // the unique @handle
+  displayName: string | null; // chosen display name; falls back to username
   avatarUrl: string | null;
+  bannerUrl: string | null; // profile banner image (png/jpg/gif)
   status: UserStatus;
   isOwner: boolean;
   createdAt: string; // ISO string over the wire
@@ -18,6 +21,7 @@ export interface User {
 /** A User as exposed publicly (never includes passwordHash). */
 export interface PublicUser extends User {
   roles?: Role[]; // populated where the server joins roles
+  banned?: boolean; // true if currently banned (only surfaced to moderators)
 }
 
 export interface Channel {
@@ -131,6 +135,8 @@ export interface AuthCredentials {
 /** Fields a user may edit on their own profile. */
 export interface UpdateProfilePayload {
   avatarUrl?: string | null;
+  bannerUrl?: string | null;
+  displayName?: string | null; // empty/null clears it (falls back to username)
   status?: Exclude<UserStatus, 'offline'>; // can't manually set yourself offline
 }
 

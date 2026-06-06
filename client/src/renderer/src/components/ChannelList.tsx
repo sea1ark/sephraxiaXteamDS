@@ -9,8 +9,8 @@ import * as voice from '../lib/voice';
 import { UserFooter } from './UserFooter';
 import { VoicePanel } from './VoicePanel';
 import { Avatar } from './Avatar';
-import { nameColor } from '../lib/roles';
-import { SpeakerIcon, VideoIcon, ScreenShareIcon, MicOffIcon, PlusIcon } from './icons';
+import { nameColor, displayName } from '../lib/roles';
+import { SpeakerIcon, VideoIcon, ScreenShareIcon, MicOffIcon, BanIcon } from './icons';
 
 export function ChannelList() {
   const channels = useChatStore((s) => s.channels);
@@ -36,6 +36,8 @@ export function ChannelList() {
 
   const canManageChannels = !!permissions?.canManageChannels;
   const canManageRoles = !!permissions?.canManageRoles;
+  const canBan = !!permissions?.canBan;
+  const openBans = useUiStore((s) => s.openBans);
 
   const [creating, setCreating] = useState<ChannelType | null>(null);
   const [name, setName] = useState('');
@@ -89,15 +91,26 @@ export function ChannelList() {
     <div className="glass flex w-60 flex-col rounded-glass">
       <div className="flex items-center justify-between border-b border-glass-border px-4 py-3">
         <span className="heading-glow text-sm font-semibold tracking-[0.15em]">home</span>
-        {canManageRoles && (
-          <button
-            onClick={openRoles}
-            className="text-text-muted transition hover:text-accent-violet"
-            title="manage roles"
-          >
-            ◈
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {canBan && (
+            <button
+              onClick={openBans}
+              className="text-text-muted transition hover:text-accent-pink"
+              title="banned users"
+            >
+              <BanIcon size={16} />
+            </button>
+          )}
+          {canManageRoles && (
+            <button
+              onClick={openRoles}
+              className="text-text-muted transition hover:text-accent-violet"
+              title="manage roles"
+            >
+              ◈
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-2">
@@ -178,14 +191,14 @@ export function ChannelList() {
                             }}
                           >
                             <Avatar
-                              username={u?.username ?? '?'}
+                              username={displayName(u)}
                               avatarUrl={u?.avatarUrl}
                               size={20}
                               color={nameColor(u)}
                             />
                           </span>
                           <span className="truncate" style={{ color: nameColor(u) }}>
-                            {u?.username ?? 'unknown'}
+                            {displayName(u)}
                           </span>
                           <span className="ml-auto flex items-center gap-1.5 text-text-muted">
                             {onCam && (

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useUiStore } from '../store/ui';
 import { useChatStore } from '../store/chat';
+import { ChatIcon, UsersIcon, PlusIcon } from './icons';
 
 export function ServerList() {
   const view = useUiStore((s) => s.view);
@@ -38,9 +39,9 @@ export function ServerList() {
         style={{ background: 'rgba(125,111,196,0.12)' }}
         title="direct messages"
       >
-        ✉
+        <ChatIcon size={22} />
         {hasUnreadDms && (
-          <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-accent-pink shadow-glow-violet" />
+          <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-accent-pink ring-2 ring-base" />
         )}
       </button>
 
@@ -54,9 +55,9 @@ export function ServerList() {
         style={{ background: 'rgba(125,111,196,0.12)' }}
         title="friends"
       >
-        ☺
+        <UsersIcon size={22} />
         {incoming > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent-pink px-1 text-[10px] text-text-heading">
+          <span className="absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-accent-pink px-[5px] text-[10px] font-semibold leading-none text-text-heading ring-2 ring-base">
             {incoming}
           </span>
         )}
@@ -66,11 +67,11 @@ export function ServerList() {
 
       <button
         onClick={() => setServerInfo((v) => !v)}
-        className={`${railBtn} text-xl text-text-muted hover:text-accent-violet`}
+        className={`${railBtn} text-text-muted hover:text-accent-violet`}
         style={{ background: 'rgba(125,111,196,0.1)' }}
         title="add a server"
       >
-        +
+        <PlusIcon size={22} />
       </button>
 
       {serverInfo && (

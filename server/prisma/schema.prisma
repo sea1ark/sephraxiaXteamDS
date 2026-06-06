@@ -13,9 +13,12 @@ datasource db {
 
 model User {
   id           String   @id @default(cuid())
-  username     String   @unique
+  uid          Int?     @unique // sequential public id (1, 2, 3…); seniority marker
+  username     String   @unique // the @handle
+  displayName  String? // chosen display name; falls back to username
   passwordHash String
   avatarUrl    String?
+  bannerUrl    String? // profile banner image (png/jpg/gif)
   status       String   @default("offline") // online | idle | dnd | offline
   isOwner      Boolean  @default(false) // bypasses all permission checks
   createdAt    DateTime @default(now())

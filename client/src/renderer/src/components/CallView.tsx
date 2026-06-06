@@ -8,7 +8,7 @@ import { useChatStore } from '../store/chat';
 import { useAuthStore } from '../store/auth';
 import { useUiStore } from '../store/ui';
 import * as voice from '../lib/voice';
-import { nameColor } from '../lib/roles';
+import { nameColor, displayName } from '../lib/roles';
 import { ParticipantTile } from './ParticipantTile';
 import { ScreenTile } from './ScreenTile';
 import {
@@ -39,7 +39,7 @@ export function CallView() {
 
   if (call.status !== 'active' && call.status !== 'outgoing') return null;
   const peerId = call.peerUserId!;
-  const name = peer?.username ?? 'user';
+  const name = displayName(peer);
   const outgoing = call.status === 'outgoing';
 
   const remote = voice.getRemoteMedia(peerId);
@@ -69,12 +69,12 @@ export function CallView() {
       <Cell key="me">
         <ParticipantTile
           user={me ?? undefined}
-          fallbackName={me?.username ?? 'you'}
+          fallbackName={displayName(me ?? undefined)}
           muted={muted}
           speaking={!!speaking[me?.id ?? '']}
           stream={localCam}
           mirror
-          label={`${me?.username ?? 'you'} (you)`}
+          label={`${displayName(me ?? undefined)} (you)`}
         />
       </Cell>,
     );

@@ -2,6 +2,7 @@
 import { useAuthStore } from '../store/auth';
 import { useUiStore } from '../store/ui';
 import { Avatar } from './Avatar';
+import { displayName } from '../lib/roles';
 import { SettingsIcon, LogoutIcon } from './icons';
 
 const STATUS_CLASS: Record<string, string> = {
@@ -30,7 +31,10 @@ export function UserFooter() {
             className={`status-dot ${STATUS_CLASS[user?.status ?? 'online']} absolute -bottom-0.5 -right-0.5 ring-2 ring-base`}
           />
         </div>
-        <span className="truncate text-sm text-text-primary">{user?.username}</span>
+        <span className="min-w-0">
+          <span className="block truncate text-sm text-text-primary">{displayName(user ?? undefined)}</span>
+          <span className="block truncate text-[11px] text-text-muted">@{user?.username}</span>
+        </span>
       </button>
       <div className="flex items-center gap-1">
         <button

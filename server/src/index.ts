@@ -27,6 +27,21 @@ async function ensureOwner() {
   }
 }
 
+// Assign sequential public UIDs (1, 2, 3…) to any users created before the
+// field existed, ordered by registration time so seniority is preserved.
+async function assignUids() {
+  const missing = await prisma.user.findMany({
+    where: { uid: null },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+  });
+  if (missing.length === 0) return;
+  let next = ((await prisma.user.aggregate({ _max: { uid: true } }))._max.uid ?? 0) + 1;
+  for (const u of missing) {
+    await prisma.user.update({ where: { id: u.id }, data: { uid: next++ } });
+  }
+}
+
 async function main() {
   const app = Fastify({ logger: true });
 
@@ -52,6 +67,7 @@ async function main() {
   await app.register(friendRoutes);
 
   await ensureOwner();
+  await assignUids();
 
   // Bind Socket.io to Fastify's underlying HTTP server. `ready()` ensures the
   // server exists before we attach.

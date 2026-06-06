@@ -17,13 +17,16 @@ const ALLOWED_IMAGE: Record<string, string> = {
   'image/webp': 'webp',
 };
 
+const imageUrl = z
+  .string()
+  .max(2048)
+  .refine((v) => v === '' || /^(https?:|data:image\/|\/uploads\/)/.test(v), 'must be an image url');
+
 const updateProfileSchema = z.object({
-  // empty string clears the avatar; otherwise must be an http(s) or data URL
-  avatarUrl: z
-    .string()
-    .max(2048)
-    .refine((v) => v === '' || /^(https?:|data:image\/)/.test(v), 'avatar must be an image url')
-    .nullish(),
+  // empty string clears the avatar; otherwise must be an http(s) / data / upload URL
+  avatarUrl: imageUrl.nullish(),
+  bannerUrl: imageUrl.nullish(),
+  displayName: z.string().trim().max(32).nullish(), // empty clears → falls back to username
   status: z.enum(['online', 'idle', 'dnd']).optional(),
 });
 
@@ -50,9 +53,20 @@ export async function userRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? 'Invalid input' });
     }
-    const data: { avatarUrl?: string | null; status?: string } = {};
+    const data: {
+      avatarUrl?: string | null;
+      bannerUrl?: string | null;
+      displayName?: string | null;
+      status?: string;
+    } = {};
     if (parsed.data.avatarUrl !== undefined) {
       data.avatarUrl = parsed.data.avatarUrl ? parsed.data.avatarUrl : null;
+    }
+    if (parsed.data.bannerUrl !== undefined) {
+      data.bannerUrl = parsed.data.bannerUrl ? parsed.data.bannerUrl : null;
+    }
+    if (parsed.data.displayName !== undefined) {
+      data.displayName = parsed.data.displayName ? parsed.data.displayName : null;
     }
     if (parsed.data.status !== undefined) data.status = parsed.data.status;
 
@@ -89,6 +103,52 @@ export async function userRoutes(app: FastifyInstance) {
     const updated = await prisma.user.update({
       where: { id: request.user!.sub },
       data: { avatarUrl },
+      include: withRoles,
+    });
+    const pub = toPublicUser(updated);
+    broadcastUserUpdate(pub);
+    return pub;
+  });
+
+  // Upload a profile banner image (png/jpg/gif/webp). Saved to
+  // /uploads/<userId>-banner.<ext> and set on the user.
+  app.post('/users/me/banner', async (request, reply) => {
+    const file = await request.file();
+    if (!file) return reply.code(400).send({ error: 'no file uploaded' });
+    const buffer = await file.toBuffer();
+    const ext = ALLOWED_IMAGE[file.mimetype];
+    if (!ext) return reply.code(400).send({ error: 'unsupported image type' });
+
+    await mkdir(UPLOAD_DIR, { recursive: true });
+    const filename = `${request.user!.sub}-banner.${ext}`;
+    await writeFile(join(UPLOAD_DIR, filename), buffer);
+
+    const bannerUrl = `/uploads/${filename}?v=${Date.now()}`;
+    const updated = await prisma.user.update({
+      where: { id: request.user!.sub },
+      data: { bannerUrl },
+      include: withRoles,
+    });
+    const pub = toPublicUser(updated);
+    broadcastUserUpdate(pub);
+    return pub;
+  });
+
+  // Change a user's public UID. Owner only — UID is a seniority marker.
+  app.patch('/users/:id/uid', async (request, reply) => {
+    const actor = await prisma.user.findUnique({ where: { id: request.user!.sub } });
+    if (!actor?.isOwner) return reply.code(403).send({ error: 'only the owner can change a UID' });
+    const body = z.object({ uid: z.number().int().min(1).max(1_000_000) }).safeParse(request.body);
+    if (!body.success) return reply.code(400).send({ error: 'uid (positive integer) required' });
+    const { id } = request.params as { id: string };
+
+    const clash = await prisma.user.findUnique({ where: { uid: body.data.uid } });
+    if (clash && clash.id !== id) {
+      return reply.code(409).send({ error: `uid ${body.data.uid} is already taken by @${clash.username}` });
+    }
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { uid: body.data.uid },
       include: withRoles,
     });
     const pub = toPublicUser(updated);

@@ -2,7 +2,7 @@ import type { PublicUser } from '@sephraxia/shared';
 import { useChatStore } from '../store/chat';
 import { useUiStore } from '../store/ui';
 import { Avatar } from './Avatar';
-import { nameColor, roleSymbol } from '../lib/roles';
+import { nameColor, roleSymbol, displayName } from '../lib/roles';
 
 const STATUS_CLASS: Record<string, string> = {
   online: 'status-online',
@@ -51,7 +51,7 @@ function Section({ label, users, dim }: { label: string; users: PublicUser[]; di
             </div>
             <span className="truncate text-sm" style={{ color: nameColor(u) }}>
               {roleSymbol(u) && <span className="mr-1">{roleSymbol(u)}</span>}
-              {u.username}
+              {displayName(u)}
             </span>
           </div>
         ))}

@@ -5,6 +5,7 @@ import { api, ApiError } from '../lib/api';
 import { useUiStore } from '../store/ui';
 import { useChatStore } from '../store/chat';
 import { useAuthStore } from '../store/auth';
+import { displayName } from '../lib/roles';
 
 const TIMEOUTS: { label: string; minutes: number }[] = [
   { label: '60 seconds', minutes: 1 },
@@ -121,8 +122,9 @@ export function MemberContextMenu() {
         style={{ left, top, boxShadow: '0 16px 40px rgba(0,0,0,0.5)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-glass-border px-3 py-1.5 text-xs font-semibold text-text-heading">
-          {target.username}
+        <div className="border-b border-glass-border px-3 py-1.5 text-text-heading">
+          <div className="truncate text-xs font-semibold">{displayName(target)}</div>
+          <div className="truncate text-[10px] text-text-muted">@{target.username}</div>
         </div>
 
         {sub === null && confirm === null && (
@@ -210,7 +212,7 @@ export function MemberContextMenu() {
         {confirm && (
           <div className="mt-1 px-3 py-2">
             <p className="mb-2 text-sm text-text-primary">
-              {confirm === 'kick' ? 'kick' : 'ban'} <span className="font-semibold">{target.username}</span>?
+              {confirm === 'kick' ? 'kick' : 'ban'} <span className="font-semibold">{displayName(target)}</span>?
             </p>
             <div className="flex gap-2">
               <button

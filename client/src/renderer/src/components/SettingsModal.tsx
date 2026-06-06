@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/auth';
 import { useChatStore } from '../store/chat';
 import { useVoiceStore } from '../store/voice';
 import * as voice from '../lib/voice';
+import { resolveAssetUrl } from '../lib/config';
 import { Avatar } from './Avatar';
 
 const STATUSES: { value: Exclude<UserStatus, 'offline'>; label: string; dot: string }[] = [
@@ -22,16 +23,20 @@ export function SettingsModal() {
   const upsertUser = useChatStore((s) => s.upsertUser);
 
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [bannerUrl, setBannerUrl] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [status, setStatus] = useState<Exclude<UserStatus, 'offline'>>('online');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [bannerUploading, setBannerUploading] = useState(false);
   const [devices, setDevices] = useState<{
     inputs: MediaDeviceInfo[];
     outputs: MediaDeviceInfo[];
     cameras: MediaDeviceInfo[];
   }>({ inputs: [], outputs: [], cameras: [] });
   const fileInput = useRef<HTMLInputElement>(null);
+  const bannerInput = useRef<HTMLInputElement>(null);
 
   const inputDeviceId = useVoiceStore((s) => s.inputDeviceId);
   const outputDeviceId = useVoiceStore((s) => s.outputDeviceId);
@@ -41,6 +46,8 @@ export function SettingsModal() {
   useEffect(() => {
     if (!open || !user) return;
     setAvatarUrl(user.avatarUrl ?? '');
+    setBannerUrl(user.bannerUrl ?? '');
+    setDisplayName(user.displayName ?? '');
     setStatus(user.status === 'offline' ? 'online' : user.status);
     setError(null);
     voice.listDevices().then(setDevices).catch(() => {});
@@ -63,11 +70,31 @@ export function SettingsModal() {
     }
   }
 
+  async function uploadBannerFile(file: File) {
+    setBannerUploading(true);
+    setError(null);
+    try {
+      const updated = await api.uploadBanner(file);
+      patchUser(updated);
+      upsertUser(updated);
+      setBannerUrl(updated.bannerUrl ?? '');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'banner upload failed');
+    } finally {
+      setBannerUploading(false);
+    }
+  }
+
   async function save() {
     setBusy(true);
     setError(null);
     try {
-      const updated = await api.updateProfile({ avatarUrl: avatarUrl.trim(), status });
+      const updated = await api.updateProfile({
+        avatarUrl: avatarUrl.trim(),
+        bannerUrl: bannerUrl.trim(),
+        displayName: displayName.trim(),
+        status,
+      });
       patchUser(updated);
       upsertUser(updated);
       close();
@@ -84,14 +111,63 @@ export function SettingsModal() {
       onClick={close}
       style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
     >
-      <div className="glass w-[400px] rounded-glass p-6" onClick={(e) => e.stopPropagation()}>
-        <h2 className="heading-glow mb-5 text-lg font-semibold tracking-[0.15em]">my profile</h2>
+      <div
+        className="glass max-h-[88vh] w-[440px] overflow-y-auto rounded-glass p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="heading-glow mb-4 text-lg font-semibold tracking-[0.15em]">my profile</h2>
 
-        <div className="mb-5 flex items-center gap-4">
+        {/* banner preview */}
+        <div
+          className="relative mb-4 h-24 overflow-hidden rounded-glass"
+          style={
+            resolveAssetUrl(bannerUrl)
+              ? undefined
+              : { background: 'linear-gradient(120deg, rgba(125,111,196,0.5), rgba(212,83,126,0.5))' }
+          }
+        >
+          {resolveAssetUrl(bannerUrl) && (
+            <img src={resolveAssetUrl(bannerUrl)!} alt="" className="h-full w-full object-cover" />
+          )}
+          <div className="absolute right-2 top-2 flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => bannerInput.current?.click()}
+              disabled={bannerUploading}
+              className="rounded-glass px-2.5 py-1 text-[11px] text-white backdrop-blur-sm transition hover:brightness-125"
+              style={{ background: 'rgba(0,0,0,0.45)' }}
+            >
+              {bannerUploading ? 'uploading…' : 'change banner'}
+            </button>
+            {bannerUrl && (
+              <button
+                type="button"
+                onClick={() => setBannerUrl('')}
+                className="rounded-glass px-2.5 py-1 text-[11px] text-white backdrop-blur-sm transition hover:text-accent-pink"
+                style={{ background: 'rgba(0,0,0,0.45)' }}
+              >
+                remove
+              </button>
+            )}
+          </div>
+          <input
+            ref={bannerInput}
+            type="file"
+            accept="image/png,image/jpeg,image/gif,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) uploadBannerFile(f);
+              e.target.value = '';
+            }}
+          />
+        </div>
+
+        {/* avatar + uploads */}
+        <div className="mb-4 flex items-center gap-4">
           <Avatar username={user.username} avatarUrl={avatarUrl || null} size={64} />
           <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-text-heading">{user.username}</p>
-            <div className="mt-1.5 flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => fileInput.current?.click()}
@@ -99,7 +175,7 @@ export function SettingsModal() {
                 className="rounded-glass px-3 py-1.5 text-xs text-text-primary transition hover:text-accent-violet"
                 style={{ background: 'rgba(125,111,196,0.12)', border: '1px solid rgba(180,160,240,0.14)' }}
               >
-                {uploading ? 'uploading…' : 'upload image'}
+                {uploading ? 'uploading…' : 'upload avatar'}
               </button>
               {avatarUrl && (
                 <button
@@ -124,6 +200,20 @@ export function SettingsModal() {
             />
           </div>
         </div>
+
+        {/* display name */}
+        <label className="section-label mb-1 block">display name</label>
+        <input
+          className="glass-input mb-1"
+          value={displayName}
+          maxLength={32}
+          placeholder={user.username}
+          onChange={(e) => setDisplayName(e.target.value)}
+        />
+        <p className="mb-4 text-[11px] text-text-muted">
+          shown to others · @{user.username}
+          {user.uid ? ` · UID #${user.uid}` : ''}
+        </p>
 
         <label className="section-label mb-2 block">status</label>
         <div className="mb-5 flex gap-2">

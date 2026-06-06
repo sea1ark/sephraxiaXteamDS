@@ -5,6 +5,7 @@ import { Layout } from './components/Layout';
 import { ProfileModal } from './components/ProfileModal';
 import { SettingsModal } from './components/SettingsModal';
 import { RolesModal } from './components/RolesModal';
+import { BansModal } from './components/BansModal';
 import { MediaViewer } from './components/MediaViewer';
 import { MemberContextMenu } from './components/MemberContextMenu';
 import { ChannelContextMenu } from './components/ChannelContextMenu';
@@ -42,6 +43,7 @@ export default function App() {
       <ProfileModal />
       <SettingsModal />
       <RolesModal />
+      <BansModal />
       <MediaViewer />
       <MemberContextMenu />
       <ChannelContextMenu />

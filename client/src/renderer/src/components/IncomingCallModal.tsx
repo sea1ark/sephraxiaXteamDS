@@ -6,7 +6,7 @@ import { useChatStore } from '../store/chat';
 import * as voice from '../lib/voice';
 import { sounds } from '../lib/sounds';
 import { Avatar } from './Avatar';
-import { nameColor } from '../lib/roles';
+import { nameColor, displayName } from '../lib/roles';
 import { PhoneIcon, HangupIcon } from './icons';
 
 export function IncomingCallModal() {
@@ -22,7 +22,7 @@ export function IncomingCallModal() {
 
   if (!incoming || !call.peerUserId) return null;
   const peerId = call.peerUserId;
-  const name = caller?.username ?? 'someone';
+  const name = caller ? displayName(caller) : 'someone';
 
   return (
     <div
