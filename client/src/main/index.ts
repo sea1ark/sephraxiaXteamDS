@@ -95,6 +95,23 @@ ipcMain.handle('updater:current', () => lastUpdaterStatus);
 // Renderer's "Restart" button. quitAndInstall: isSilent, isForceRunAfter.
 ipcMain.on('updater:restart', () => autoUpdaterRef?.quitAndInstall(true, true));
 
+// Force-apply an update. If it's already downloaded, install + relaunch right
+// now (does NOT rely on the install-on-quit hook, which is skipped when the app
+// is force-killed). If it's still downloading, remember the intent and install
+// as soon as the download finishes.
+let pendingInstall = false;
+ipcMain.on('updater:install', () => {
+  if (!autoUpdaterRef) return;
+  if (lastUpdaterStatus.state === 'downloaded') {
+    autoUpdaterRef.quitAndInstall(true, true);
+  } else {
+    pendingInstall = true;
+    autoUpdaterRef.checkForUpdates().catch(() => {});
+  }
+});
+// Manual re-check trigger.
+ipcMain.on('updater:check', () => autoUpdaterRef?.checkForUpdates().catch(() => {}));
+
 app.whenReady().then(async () => {
   // Grant microphone access for WebRTC voice chat (deny everything else).
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
@@ -182,9 +199,18 @@ async function setupAutoUpdate(): Promise<void> {
     autoUpdater.on('update-downloaded', (info) => {
       ulog('update downloaded:', info.version);
       broadcastUpdaterStatus({ state: 'downloaded', version: info.version });
+      // If the user asked to update while it was still downloading, apply now.
+      if (pendingInstall) {
+        ulog('pending install → quitAndInstall');
+        autoUpdater.quitAndInstall(true, true);
+      }
     });
 
     await autoUpdater.checkForUpdates();
+    // Re-check periodically so long-running sessions still pick up releases.
+    setInterval(() => {
+      autoUpdater.checkForUpdates().catch(() => {});
+    }, 15 * 60 * 1000);
   } catch (err) {
     console.error('auto-update unavailable:', err);
   }

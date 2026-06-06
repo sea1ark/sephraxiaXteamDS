@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuthStore } from '../store/auth';
 import { SERVER_URL, setServerUrl } from '../lib/config';
+import { useUpdater } from '../lib/useUpdater';
 
 export function Login() {
   const setSession = useAuthStore((s) => s.setSession);
@@ -13,6 +14,7 @@ export function Login() {
   const [showServer, setShowServer] = useState(false);
   const [server, setServer] = useState(SERVER_URL);
   const [serverSaved, setServerSaved] = useState(false);
+  const update = useUpdater();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,7 +34,31 @@ export function Login() {
   }
 
   return (
-    <div className="relative z-10 flex h-full items-center justify-center">
+    <div className="relative z-10 flex h-full flex-col items-center justify-center gap-3">
+      {update.hasUpdate && (
+        <button
+          type="button"
+          onClick={update.install}
+          className="flex w-[360px] items-center gap-3 rounded-glass border border-accent-violet/40 bg-accent-violet/15 px-4 py-2.5 text-left transition hover:bg-accent-violet/25 hover:shadow-glow-violet"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+          title="обновить приложение"
+        >
+          <span className="text-lg">🔄</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-text-heading">
+              {update.downloaded ? 'Обновление готово' : 'Доступно обновление'}
+              {update.version ? ` · v${update.version}` : ''}
+            </span>
+            <span className="block text-[11px] text-text-muted">
+              {update.downloaded
+                ? 'нажмите, чтобы установить и перезапустить'
+                : update.downloading
+                  ? `загрузка… ${update.percent}% · нажмите, чтобы обновить по готовности`
+                  : 'нажмите, чтобы обновить'}
+            </span>
+          </span>
+        </button>
+      )}
       <form
         onSubmit={submit}
         className="glass w-[360px] rounded-glass p-8"

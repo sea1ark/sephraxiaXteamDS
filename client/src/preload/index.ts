@@ -31,6 +31,10 @@ const api = {
     },
     // Quit and install the downloaded update, then relaunch.
     restart: () => ipcRenderer.send('updater:restart'),
+    // Force-apply the update now (installs once ready, even if force-killed).
+    install: () => ipcRenderer.send('updater:install'),
+    // Manually re-check for updates.
+    check: () => ipcRenderer.send('updater:check'),
   },
 };
 
