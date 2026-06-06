@@ -45,6 +45,7 @@ interface UiState {
 
   screenPickerOpen: boolean; // screen-share source picker
   screenViewUserId: string | null; // whose shared screen we're watching (fullscreen)
+  voiceStageChannelId: string | null; // voice channel whose Discord-style stage fills the main column
 
   showServer: () => void;
   showFriends: () => void;
@@ -69,6 +70,8 @@ interface UiState {
   closeScreenPicker: () => void;
   openScreenView: (userId: string) => void;
   closeScreenView: () => void;
+  showVoiceStage: (channelId: string) => void;
+  clearVoiceStage: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -86,11 +89,12 @@ export const useUiStore = create<UiState>((set) => ({
 
   screenPickerOpen: false,
   screenViewUserId: null,
+  voiceStageChannelId: null,
 
   showServer: () => set({ view: 'server' }),
-  showFriends: () => set({ view: 'friends', memberMenu: null }),
+  showFriends: () => set({ view: 'friends', memberMenu: null, voiceStageChannelId: null }),
   openDm: (userId) =>
-    set({ view: 'dm', activeDmUserId: userId, profileUserId: null, memberMenu: null, replyTo: null }),
+    set({ view: 'dm', activeDmUserId: userId, profileUserId: null, memberMenu: null, replyTo: null, voiceStageChannelId: null }),
 
   openProfile: (userId) => set({ profileUserId: userId, memberMenu: null }),
   closeProfile: () => set({ profileUserId: null }),
@@ -111,4 +115,6 @@ export const useUiStore = create<UiState>((set) => ({
   closeScreenPicker: () => set({ screenPickerOpen: false }),
   openScreenView: (userId) => set({ screenViewUserId: userId }),
   closeScreenView: () => set({ screenViewUserId: null }),
+  showVoiceStage: (channelId) => set({ voiceStageChannelId: channelId }),
+  clearVoiceStage: () => set({ voiceStageChannelId: null }),
 }));

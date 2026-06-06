@@ -1,34 +1,28 @@
-// Floating surface for a 1:1 call: video tiles (remote/own camera + screen),
-// call status, and the in-call controls. Shown while a call is being placed
-// (outgoing) or is connected (active). Mounted globally so it persists across
-// view switches.
+// Floating surface for a 1:1 call. Uses the same Discord-style tiles as the
+// voice-channel stage (avatar-on-color or camera, plus screen tiles) with a
+// status header and the in-call control bar. Shown while placing (outgoing) or
+// connected (active); mounted globally so it survives view switches.
+import type { ReactNode } from 'react';
 import { useVoiceStore } from '../store/voice';
 import { useChatStore } from '../store/chat';
+import { useAuthStore } from '../store/auth';
 import { useUiStore } from '../store/ui';
 import * as voice from '../lib/voice';
-import { Avatar } from './Avatar';
 import { nameColor } from '../lib/roles';
-import { VideoTile } from './VideoTile';
-
-interface Tile {
-  key: string;
-  stream: MediaStream;
-  label: string;
-  mirror?: boolean;
-  isScreen?: boolean;
-  ownerId?: string; // for opening a fullscreen screen view
-}
+import { ParticipantTile } from './ParticipantTile';
+import { ScreenTile } from './ScreenTile';
 
 export function CallView() {
   const call = useVoiceStore((s) => s.call);
-  // Subscribing to mediaVersion forces a re-read of the (non-React) streams.
-  const mediaVersion = useVoiceStore((s) => s.mediaVersion);
+  const mediaVersion = useVoiceStore((s) => s.mediaVersion); // re-read non-React streams
   const muted = useVoiceStore((s) => s.muted);
   const deafened = useVoiceStore((s) => s.deafened);
   const sharingScreen = useVoiceStore((s) => s.sharingScreen);
   const cameraOn = useVoiceStore((s) => s.cameraOn);
   const speaking = useVoiceStore((s) => s.speaking);
+  const remoteInfo = useVoiceStore((s) => (call.peerUserId ? s.remoteMedia[call.peerUserId] : undefined));
   const peer = useChatStore((s) => s.users.find((u) => u.id === call.peerUserId));
+  const me = useAuthStore((s) => s.user);
   const openPicker = useUiStore((s) => s.openScreenPicker);
   const openScreenView = useUiStore((s) => s.openScreenView);
   void mediaVersion;
@@ -42,37 +36,56 @@ export function CallView() {
   const localCam = voice.getLocalCamera();
   const localScreen = voice.getLocalScreen();
 
-  const tiles: Tile[] = [];
+  const tiles: ReactNode[] = [
+    <Cell key="peer">
+      <ParticipantTile
+        user={peer}
+        fallbackName={name}
+        muted={remoteInfo?.muted}
+        speaking={!!speaking[peerId]}
+        stream={remote.camera}
+        label={name}
+      />
+    </Cell>,
+  ];
   if (remote.screen)
-    tiles.push({ key: 'rs', stream: remote.screen, label: `${name} · screen`, isScreen: true, ownerId: peerId });
-  if (remote.camera) tiles.push({ key: 'rc', stream: remote.camera, label: name });
-  if (localScreen) tiles.push({ key: 'ls', stream: localScreen, label: 'you · screen', isScreen: true });
-  if (localCam) tiles.push({ key: 'lc', stream: localCam, label: 'you', mirror: true });
-
-  const ctrl = (active: boolean, danger = false) =>
-    `grid h-11 w-11 place-items-center rounded-full text-lg transition hover:scale-105 ${
-      danger
-        ? 'text-white'
-        : active
-          ? 'text-accent-pink'
-          : 'text-text-primary hover:text-accent-violet'
-    }`;
-  const ctrlBg = (active: boolean) =>
-    active
-      ? { background: 'rgba(212,83,126,0.2)', border: '1px solid rgba(212,83,126,0.4)' }
-      : { background: 'rgba(125,111,196,0.14)', border: '1px solid rgba(180,160,240,0.18)' };
+    tiles.push(
+      <Cell key="peer-screen">
+        <ScreenTile stream={remote.screen} label={`${name} · screen`} onClick={() => openScreenView(peerId)} />
+      </Cell>,
+    );
+  if (!outgoing)
+    tiles.push(
+      <Cell key="me">
+        <ParticipantTile
+          user={me ?? undefined}
+          fallbackName={me?.username ?? 'you'}
+          muted={muted}
+          speaking={!!speaking[me?.id ?? '']}
+          stream={localCam}
+          mirror
+          label={`${me?.username ?? 'you'} (you)`}
+        />
+      </Cell>,
+    );
+  if (localScreen)
+    tiles.push(
+      <Cell key="my-screen">
+        <ScreenTile stream={localScreen} label="you · screen" onClick={() => me && openScreenView(me.id)} />
+      </Cell>,
+    );
 
   return (
     <div className="pointer-events-none fixed inset-0 z-40 grid place-items-center p-4">
       <div
         className="glass pointer-events-auto flex flex-col rounded-glass"
-        style={{ width: 'min(940px, 94vw)', height: 'min(640px, 88vh)', border: '1px solid rgba(108,212,126,0.25)' }}
+        style={{ width: 'min(940px, 94vw)', height: 'min(660px, 90vh)', border: '1px solid rgba(108,212,126,0.25)' }}
       >
         {/* header */}
         <div className="flex items-center gap-2 border-b border-glass-border px-5 py-3">
           <span
             className="status-dot"
-            style={{ background: outgoing ? '#d4b25a' : '#6cd47e', boxShadow: '0 0 8px currentColor' }}
+            style={{ background: outgoing ? '#d4b25a' : '#23a559', boxShadow: '0 0 8px currentColor' }}
           />
           <span className="heading-glow text-sm font-semibold" style={{ color: nameColor(peer) }}>
             {name}
@@ -81,73 +94,64 @@ export function CallView() {
         </div>
 
         {/* stage */}
-        <div className="relative flex-1 overflow-hidden p-3">
-          {tiles.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-3">
-              <div
-                className="grid place-items-center rounded-full transition-shadow"
-                style={{ boxShadow: speaking[peerId] ? '0 0 0 3px #6cd47e, 0 0 18px #6cd47e' : 'none', borderRadius: '9999px' }}
-              >
-                <Avatar username={name} avatarUrl={peer?.avatarUrl} size={96} color={nameColor(peer)} />
-              </div>
-              <p className="text-sm text-text-muted">
-                {outgoing ? `ringing ${name}…` : 'connected — no video'}
-              </p>
-            </div>
-          ) : (
-            <div
-              className="grid h-full gap-3"
-              style={{ gridTemplateColumns: tiles.length === 1 ? '1fr' : 'repeat(2, 1fr)' }}
-            >
-              {tiles.map((t) => (
-                <div
-                  key={t.key}
-                  onClick={() => t.isScreen && t.ownerId && openScreenView(t.ownerId)}
-                  className={`relative overflow-hidden rounded-glass ${t.isScreen && t.ownerId ? 'cursor-zoom-in' : ''}`}
-                  style={{ border: '1px solid rgba(180,160,240,0.16)', minHeight: 0 }}
-                >
-                  <VideoTile stream={t.stream} mirror={t.mirror} objectFit={t.isScreen ? 'contain' : 'cover'} />
-                  <span
-                    className="absolute bottom-1.5 left-1.5 rounded px-1.5 py-0.5 text-[11px] text-white"
-                    style={{ background: 'rgba(5,4,9,0.6)' }}
-                  >
-                    {t.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="flex flex-1 flex-wrap content-center items-center justify-center gap-3 overflow-y-auto p-4">
+          {tiles}
         </div>
 
         {/* controls */}
-        <div className="flex items-center justify-center gap-3 border-t border-glass-border px-5 py-3">
-          <button onClick={() => voice.toggleMute()} className={ctrl(muted)} style={ctrlBg(muted)} title={muted ? 'unmute' : 'mute'}>
+        <div className="flex items-center justify-center gap-2.5 pb-5 pt-2">
+          <CircleBtn active={muted} on={() => voice.toggleMute()} title={muted ? 'unmute' : 'mute'}>
             {muted ? '🔇' : '🎙'}
-          </button>
-          <button onClick={() => voice.toggleDeafen()} className={ctrl(deafened)} style={ctrlBg(deafened)} title={deafened ? 'undeafen' : 'deafen'}>
+          </CircleBtn>
+          <CircleBtn active={deafened} on={() => voice.toggleDeafen()} title={deafened ? 'undeafen' : 'deafen'}>
             {deafened ? '🔈' : '🎧'}
-          </button>
-          <button onClick={() => voice.toggleCamera()} className={ctrl(cameraOn)} style={ctrlBg(cameraOn)} title={cameraOn ? 'turn camera off' : 'turn camera on'}>
+          </CircleBtn>
+          <CircleBtn active={cameraOn} on={() => voice.toggleCamera()} title={cameraOn ? 'stop camera' : 'start camera'}>
             {cameraOn ? '📹' : '📷'}
-          </button>
-          <button
-            onClick={() => (sharingScreen ? voice.stopScreenShare() : openPicker())}
-            className={ctrl(sharingScreen)}
-            style={ctrlBg(sharingScreen)}
+          </CircleBtn>
+          <CircleBtn
+            active={sharingScreen}
+            on={() => (sharingScreen ? voice.stopScreenShare() : openPicker())}
             title={sharingScreen ? 'stop sharing' : 'share screen'}
           >
             🖥
-          </button>
-          <button
-            onClick={() => voice.endCall()}
-            className={ctrl(false, true)}
-            style={{ background: 'rgba(212,83,126,0.9)', boxShadow: '0 0 14px rgba(212,83,126,0.5)' }}
-            title="hang up"
-          >
+          </CircleBtn>
+          <CircleBtn danger on={() => voice.endCall()} title="hang up">
             ⏏
-          </button>
+          </CircleBtn>
         </div>
       </div>
     </div>
+  );
+}
+
+function Cell({ children }: { children: ReactNode }) {
+  return <div style={{ flex: '1 1 320px', maxWidth: 520, aspectRatio: '16 / 9' }}>{children}</div>;
+}
+
+function CircleBtn({
+  children,
+  on,
+  active,
+  danger,
+  title,
+}: {
+  children: ReactNode;
+  on: () => void;
+  active?: boolean;
+  danger?: boolean;
+  title: string;
+}) {
+  const bg = danger ? '#f23f43' : active ? 'rgba(242,63,67,0.18)' : 'rgba(255,255,255,0.08)';
+  const color = danger ? '#fff' : active ? '#f23f43' : '#e7e3f3';
+  return (
+    <button
+      onClick={on}
+      title={title}
+      className="grid h-12 w-12 place-items-center rounded-full text-lg transition hover:brightness-125"
+      style={{ background: bg, color }}
+    >
+      {children}
+    </button>
   );
 }

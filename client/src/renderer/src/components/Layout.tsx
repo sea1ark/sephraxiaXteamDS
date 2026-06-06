@@ -14,6 +14,7 @@ import { Chat } from './Chat';
 import { DmChat } from './DmChat';
 import { FriendsView } from './FriendsView';
 import { UserList } from './UserList';
+import { VoiceStage } from './VoiceStage';
 
 export function Layout() {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -23,6 +24,7 @@ export function Layout() {
   const myId = useAuthStore((s) => s.user?.id);
 
   const view = useUiStore((s) => s.view);
+  const stageChannelId = useUiStore((s) => s.voiceStageChannelId);
   const activeChannelId = useChatStore((s) => s.activeChannelId);
   const activeDmUserId = useUiStore((s) => s.activeDmUserId);
 
@@ -208,8 +210,14 @@ export function Layout() {
       {view === 'server' && (
         <>
           <ChannelList />
-          <Chat />
-          <UserList />
+          {stageChannelId ? (
+            <VoiceStage channelId={stageChannelId} />
+          ) : (
+            <>
+              <Chat />
+              <UserList />
+            </>
+          )}
         </>
       )}
       {view === 'dm' && (

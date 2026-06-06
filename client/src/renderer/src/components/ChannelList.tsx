@@ -21,6 +21,9 @@ export function ChannelList() {
   const openRoles = useUiStore((s) => s.openRoles);
   const openMemberMenu = useUiStore((s) => s.openMemberMenu);
   const openChannelMenu = useUiStore((s) => s.openChannelMenu);
+  const showVoiceStage = useUiStore((s) => s.showVoiceStage);
+  const clearVoiceStage = useUiStore((s) => s.clearVoiceStage);
+  const stageChannelId = useUiStore((s) => s.voiceStageChannelId);
   const voiceChannelId = useVoiceStore((s) => s.channelId);
   const voiceParticipants = useVoiceStore((s) => s.participants);
   const speaking = useVoiceStore((s) => s.speaking);
@@ -104,12 +107,15 @@ export function ChannelList() {
           {textChannels.map((c) => (
             <div
               key={c.id}
-              onClick={() => setActive(c.id)}
+              onClick={() => {
+                setActive(c.id);
+                clearVoiceStage();
+              }}
               onContextMenu={(e) => {
                 e.preventDefault();
                 openChannelMenu({ channelId: c.id, x: e.clientX, y: e.clientY });
               }}
-              className={`channel-item ${c.id === activeId ? 'active' : ''}`}
+              className={`channel-item ${c.id === activeId && !stageChannelId ? 'active' : ''}`}
             >
               <span className="text-text-muted">#</span>
               <span className="truncate text-sm">{c.name}</span>
@@ -130,13 +136,16 @@ export function ChannelList() {
             return (
               <div key={c.id}>
                 <div
-                  onClick={() => voice.joinVoice(c.id)}
+                  onClick={() => {
+                    voice.joinVoice(c.id);
+                    showVoiceStage(c.id);
+                  }}
                   onContextMenu={(e) => {
                     e.preventDefault();
                     openChannelMenu({ channelId: c.id, x: e.clientX, y: e.clientY });
                   }}
-                  className={`channel-item ${connected ? 'active' : ''}`}
-                  title="join voice"
+                  className={`channel-item ${connected || stageChannelId === c.id ? 'active' : ''}`}
+                  title="open voice"
                 >
                   <span className="text-text-muted">🔊</span>
                   <span className="truncate text-sm">{c.name}</span>
