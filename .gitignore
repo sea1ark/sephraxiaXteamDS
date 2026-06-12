@@ -29,3 +29,6 @@ client/release/
 
 # Electron build output
 client/release/
+
+# local release helper — contains a GitHub token, never commit
+release.cmd

@@ -86,12 +86,25 @@ export const api = {
   createChannel: (name: string, type: 'text' | 'voice' = 'text') =>
     request<Channel>('/channels', { method: 'POST', body: JSON.stringify({ name, type }) }),
 
-  updateChannel: (id: string, name: string) =>
-    request<Channel>(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+  updateChannel: (id: string, data: { name?: string; topic?: string | null }) =>
+    request<Channel>(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   deleteChannel: (id: string) => request<void>(`/channels/${id}`, { method: 'DELETE' }),
 
   getMessages: (channelId: string) => request<Message[]>(`/channels/${channelId}/messages`),
+
+  /** History window centred on a message — used to jump to pins/search hits. */
+  getMessagesAround: (channelId: string, messageId: string) =>
+    request<Message[]>(
+      `/channels/${channelId}/messages?around=${encodeURIComponent(messageId)}&limit=60`,
+    ),
+
+  getPins: (channelId: string) => request<Message[]>(`/channels/${channelId}/pins`),
+
+  searchMessages: (q: string, channelId?: string) =>
+    request<Message[]>(
+      `/search/messages?q=${encodeURIComponent(q)}${channelId ? `&channelId=${channelId}` : ''}`,
+    ),
 
   getUsers: () => request<PublicUser[]>('/users'),
 

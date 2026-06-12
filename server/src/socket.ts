@@ -23,6 +23,7 @@ const userRoom = (userId: string) => `user:${userId}`;
 const authorInclude = {
   author: { include: { roles: true } },
   replyTo: { select: { id: true, content: true, authorId: true, author: { select: { username: true } } } },
+  reactions: { select: { emoji: true, userId: true }, orderBy: { createdAt: 'asc' } },
 } as const;
 
 const dmInclude = {
@@ -214,6 +215,60 @@ export function setupSocket(httpServer: HttpServer): SephraxiaServer {
         }
         await prisma.message.delete({ where: { id: messageId } });
         io.emit('message:delete', { messageId, channelId: existing.channelId });
+      }),
+    );
+
+    // Toggle an emoji reaction on a channel message, then rebroadcast it.
+    socket.on(
+      'reaction:toggle',
+      guard(async ({ messageId, emoji }) => {
+        const clean = emoji?.trim().slice(0, 16);
+        if (!messageId || !clean) return;
+        if (isSendBlocked(await getModerationState(userId))) return;
+        const message = await prisma.message.findUnique({ where: { id: messageId } });
+        if (!message) return;
+
+        const existing = await prisma.reaction.findUnique({
+          where: { messageId_userId_emoji: { messageId, userId, emoji: clean } },
+        });
+        if (existing) {
+          await prisma.reaction.delete({ where: { id: existing.id } });
+        } else {
+          // Cap distinct emoji per message so the row can't grow unbounded.
+          const distinct = await prisma.reaction.findMany({
+            where: { messageId },
+            select: { emoji: true },
+            distinct: ['emoji'],
+          });
+          if (distinct.length >= 20 && !distinct.some((d) => d.emoji === clean)) return;
+          await prisma.reaction.create({ data: { messageId, userId, emoji: clean } });
+        }
+
+        const updated = await prisma.message.findUnique({
+          where: { id: messageId },
+          include: authorInclude,
+        });
+        if (updated) io.emit('message:update', toMessage(updated));
+      }),
+    );
+
+    // Pin / unpin: the author or anyone who can moderate messages.
+    socket.on(
+      'message:pin',
+      guard(async ({ messageId, pinned }) => {
+        if (!messageId) return;
+        const existing = await prisma.message.findUnique({ where: { id: messageId } });
+        if (!existing) return;
+        if (existing.authorId !== userId) {
+          const perms = await getPermissions(userId);
+          if (!perms.canDeleteMessages) return;
+        }
+        const updated = await prisma.message.update({
+          where: { id: messageId },
+          data: { pinned: !!pinned, pinnedAt: pinned ? new Date() : null },
+          include: authorInclude,
+        });
+        io.emit('message:update', toMessage(updated));
       }),
     );
 

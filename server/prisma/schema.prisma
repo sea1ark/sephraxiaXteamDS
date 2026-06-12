@@ -38,10 +38,11 @@ model User {
 }
 
 model Channel {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   name     String
-  type     String @default("text") // text | voice
-  position Int    @default(0)
+  topic    String? // short description shown in the chat header
+  type     String  @default("text") // text | voice
+  position Int     @default(0)
 
   messages Message[]
 }
@@ -52,6 +53,8 @@ model Message {
   attachments String? // JSON-encoded Attachment[] (SQLite has no JSON column)
   createdAt   DateTime  @default(now())
   editedAt    DateTime?
+  pinned      Boolean   @default(false)
+  pinnedAt    DateTime?
 
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -64,7 +67,24 @@ model Message {
   replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   Message[] @relation("MessageReplies")
 
+  reactions Reaction[]
+
   @@index([channelId, createdAt])
+  @@index([channelId, pinned])
+}
+
+// One emoji reaction by one user on one channel message.
+model Reaction {
+  id        String   @id @default(cuid())
+  emoji     String
+  createdAt DateTime @default(now())
+
+  userId String
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
 }
 
 model DirectMessage {

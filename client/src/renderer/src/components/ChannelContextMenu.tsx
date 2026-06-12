@@ -51,7 +51,7 @@ export function ChannelContextMenu() {
     setBusy(true);
     setError(null);
     try {
-      await api.updateChannel(channel.id, trimmed);
+      await api.updateChannel(channel.id, { name: trimmed });
       setChannels(await api.getChannels());
       close();
     } catch (err) {

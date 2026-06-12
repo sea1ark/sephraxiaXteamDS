@@ -7,6 +7,8 @@ import { useAuthStore } from '../store/auth';
 import { useChatStore } from '../store/chat';
 import { useUiStore } from '../store/ui';
 import { useVoiceStore } from '../store/voice';
+import { toast } from '../store/toasts';
+import { displayName } from '../lib/roles';
 import { ServerList } from './ServerList';
 import { ChannelList } from './ChannelList';
 import { DmList } from './DmList';
@@ -64,10 +66,33 @@ export function Layout() {
       const ok = await refreshSession();
       if (!ok) logout();
     });
+    // Reconnect feedback: quiet toast when the link drops / comes back.
+    let everConnected = false;
+    socket.on('connect', () => {
+      if (everConnected) toast('соединение восстановлено', 'success');
+      everConnected = true;
+    });
+    socket.on('disconnect', (reason) => {
+      if (reason !== 'io client disconnect') toast('соединение потеряно — переподключаюсь…', 'error');
+    });
+
     socket.on('message:new', (msg) => addMessage(msg));
     socket.on('message:update', (msg) => updateMessage(msg));
     socket.on('message:delete', ({ messageId, channelId }) => removeMessage(channelId, messageId));
-    socket.on('dm:new', (dm) => addDm(dm, myId));
+    socket.on('dm:new', (dm) => {
+      addDm(dm, myId);
+      // Toast incoming DMs unless that conversation is already on screen.
+      if (dm.fromId !== myId) {
+        const ui = useUiStore.getState();
+        const viewing = ui.view === 'dm' && ui.activeDmUserId === dm.fromId;
+        if (!viewing) {
+          const sender = dm.from ? displayName(dm.from) : 'новое сообщение';
+          toast(sender, 'message', dm.content || '(вложение)', () =>
+            useUiStore.getState().openDm(dm.fromId),
+          );
+        }
+      }
+    });
     socket.on('dm:update', (dm) => updateDm(dm, myId));
     socket.on('dm:delete', (payload) => removeDm(payload, myId));
     socket.on('user:online', ({ userId, status }) => setUserStatus(userId, status));
@@ -182,9 +207,12 @@ export function Layout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
 
-  // Load channel message history when the active channel changes.
+  // Load channel message history when the active channel changes. Skipped when
+  // a jump-to-message is pending — Chat loads an "around" window instead, and a
+  // racing latest-history fetch would overwrite it.
   useEffect(() => {
     if (!activeChannelId) return;
+    if (useUiStore.getState().pendingJump?.channelId === activeChannelId) return;
     api
       .getMessages(activeChannelId)
       .then((messages) => setMessages(activeChannelId, messages))

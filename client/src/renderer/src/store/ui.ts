@@ -30,6 +30,14 @@ export interface ReplyTarget {
   authorName: string;
 }
 
+/** A request to navigate to a specific message (from search / pins). */
+export interface JumpTarget {
+  channelId: string;
+  messageId: string;
+}
+
+export type ChatPanel = 'pins' | 'search';
+
 interface UiState {
   view: View;
   activeDmUserId: string | null; // the DM conversation currently open
@@ -47,6 +55,10 @@ interface UiState {
   screenPickerOpen: boolean; // screen-share source picker
   screenViewUserId: string | null; // whose shared screen we're watching (fullscreen)
   voiceStageChannelId: string | null; // voice channel whose Discord-style stage fills the main column
+
+  quickSwitcherOpen: boolean; // Ctrl+K channel/user jumper
+  chatPanel: ChatPanel | null; // pins / search panel in the chat header
+  pendingJump: JumpTarget | null; // navigate-to-message request
 
   showServer: () => void;
   showFriends: () => void;
@@ -75,6 +87,12 @@ interface UiState {
   closeScreenView: () => void;
   showVoiceStage: (channelId: string) => void;
   clearVoiceStage: () => void;
+
+  setQuickSwitcher: (open: boolean) => void;
+  toggleChatPanel: (panel: ChatPanel) => void;
+  closeChatPanel: () => void;
+  requestJump: (target: JumpTarget) => void;
+  clearJump: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -94,6 +112,10 @@ export const useUiStore = create<UiState>((set) => ({
   screenPickerOpen: false,
   screenViewUserId: null,
   voiceStageChannelId: null,
+
+  quickSwitcherOpen: false,
+  chatPanel: null,
+  pendingJump: null,
 
   showServer: () => set({ view: 'server' }),
   showFriends: () => set({ view: 'friends', memberMenu: null, voiceStageChannelId: null }),
@@ -123,4 +145,12 @@ export const useUiStore = create<UiState>((set) => ({
   closeScreenView: () => set({ screenViewUserId: null }),
   showVoiceStage: (channelId) => set({ voiceStageChannelId: channelId }),
   clearVoiceStage: () => set({ voiceStageChannelId: null }),
+
+  setQuickSwitcher: (open) => set({ quickSwitcherOpen: open }),
+  toggleChatPanel: (panel) => set((s) => ({ chatPanel: s.chatPanel === panel ? null : panel })),
+  closeChatPanel: () => set({ chatPanel: null }),
+  // Jumping always lands in the server view on that channel.
+  requestJump: (target) =>
+    set({ pendingJump: target, view: 'server', chatPanel: null, voiceStageChannelId: null }),
+  clearJump: () => set({ pendingJump: null }),
 }));

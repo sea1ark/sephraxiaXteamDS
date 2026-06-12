@@ -27,8 +27,16 @@ export interface PublicUser extends User {
 export interface Channel {
   id: string;
   name: string;
+  topic: string | null; // short description shown in the chat header
   type: ChannelType;
   position: number;
+}
+
+/** One emoji's reactions on a message, grouped server-side. */
+export interface ReactionGroup {
+  emoji: string;
+  count: number;
+  userIds: string[]; // who reacted (to highlight "me" and show tooltips)
 }
 
 /** A file attached to a message (image rendered inline, others as a chip). */
@@ -54,6 +62,9 @@ export interface Message {
   channelId: string;
   createdAt: string;
   editedAt: string | null;
+  pinned?: boolean;
+  pinnedAt?: string | null;
+  reactions?: ReactionGroup[];
   attachments?: Attachment[];
   replyToId?: string | null;
   replyTo?: ReplyPreview | null;
@@ -169,6 +180,10 @@ export interface ClientToServerEvents {
   }) => void;
   'message:edit': (payload: { messageId: string; content: string }) => void;
   'message:delete': (payload: { messageId: string }) => void;
+  // Toggle my reaction with this emoji on a channel message.
+  'reaction:toggle': (payload: { messageId: string; emoji: string }) => void;
+  // Pin or unpin a channel message (author or message moderators).
+  'message:pin': (payload: { messageId: string; pinned: boolean }) => void;
   'dm:send': (payload: {
     toId: string;
     content: string;

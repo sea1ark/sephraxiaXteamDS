@@ -1,7 +1,11 @@
+import { useEffect } from 'react';
 import { Titlebar } from './components/Titlebar';
 import { Background } from './components/Background';
 import { Login } from './components/Login';
 import { Layout } from './components/Layout';
+import { Toasts } from './components/Toasts';
+import { QuickSwitcher } from './components/QuickSwitcher';
+import { useUiStore } from './store/ui';
 import { ProfileModal } from './components/ProfileModal';
 import { SettingsModal } from './components/SettingsModal';
 import { RolesModal } from './components/RolesModal';
@@ -18,6 +22,28 @@ import { useAuthStore } from './store/auth';
 
 export default function App() {
   const loggedIn = useAuthStore((s) => !!s.accessToken && !!s.user);
+
+  // Global shortcuts: Ctrl/Cmd+K — quick switcher, Ctrl/Cmd+F — message search.
+  useEffect(() => {
+    if (!loggedIn) return;
+    function onKey(e: KeyboardEvent) {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      if (e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const ui = useUiStore.getState();
+        ui.setQuickSwitcher(!ui.quickSwitcherOpen);
+      }
+      if (e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        const ui = useUiStore.getState();
+        if (ui.view !== 'server') ui.showServer();
+        ui.toggleChatPanel('search');
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [loggedIn]);
 
   return (
     <div
@@ -48,6 +74,8 @@ export default function App() {
       <MemberContextMenu />
       <ChannelContextMenu />
       <UpdateBanner />
+      {loggedIn && <QuickSwitcher />}
+      <Toasts />
     </div>
   );
 }

@@ -5,9 +5,30 @@ import type {
   EffectivePermissions,
   Message,
   PublicUser,
+  ReactionGroup,
   ReplyPreview,
   Role,
 } from '@sephraxia/shared';
+
+/** Group raw reaction rows into per-emoji buckets, ordered by first reaction. */
+function groupReactions(
+  rows: { emoji: string; userId: string }[] | undefined,
+): ReactionGroup[] | undefined {
+  if (!rows || rows.length === 0) return undefined;
+  const order: string[] = [];
+  const byEmoji = new Map<string, string[]>();
+  for (const r of rows) {
+    if (!byEmoji.has(r.emoji)) {
+      byEmoji.set(r.emoji, []);
+      order.push(r.emoji);
+    }
+    byEmoji.get(r.emoji)!.push(r.userId);
+  }
+  return order.map((emoji) => {
+    const userIds = byEmoji.get(emoji)!;
+    return { emoji, count: userIds.length, userIds };
+  });
+}
 
 /** Safely parse the JSON-encoded attachments column into a typed array. */
 function parseAttachments(raw: string | null | undefined): Attachment[] | undefined {
@@ -111,8 +132,11 @@ export function toMessage(m: {
   channelId: string;
   createdAt: Date;
   editedAt: Date | null;
+  pinned?: boolean;
+  pinnedAt?: Date | null;
   replyToId?: string | null;
   replyTo?: DbReplyTarget | null;
+  reactions?: { emoji: string; userId: string }[];
   author?: DbUser;
 }): Message {
   return {
@@ -122,6 +146,9 @@ export function toMessage(m: {
     channelId: m.channelId,
     createdAt: m.createdAt.toISOString(),
     editedAt: m.editedAt ? m.editedAt.toISOString() : null,
+    pinned: m.pinned || undefined,
+    pinnedAt: m.pinnedAt ? m.pinnedAt.toISOString() : undefined,
+    reactions: groupReactions(m.reactions),
     attachments: parseAttachments(m.attachments),
     replyToId: m.replyToId ?? null,
     replyTo: toReplyPreview(m.replyTo),

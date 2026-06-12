@@ -1,6 +1,6 @@
 {
   "name": "sephraxia",
-  "version": "0.1.0",
+  "version": "0.1.11",
   "private": true,
   "description": "Self-hosted desktop messenger with a dark glass aesthetic",
   "workspaces": [
