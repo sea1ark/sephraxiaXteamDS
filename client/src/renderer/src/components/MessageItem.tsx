@@ -5,6 +5,7 @@ import { useUiStore } from '../store/ui';
 import { getSocket } from '../lib/socket';
 import { nameColor, roleSymbol, displayName } from '../lib/roles';
 import { Avatar } from './Avatar';
+import { Badge } from './Badge';
 import { MessageAttachments } from './MessageAttachments';
 import { ReplyPreviewLine } from './ReplyPreviewLine';
 import { MessageContent } from './MessageContent';
@@ -170,6 +171,7 @@ export function MessageItem({ message, author, grouped, highlight }: Props) {
 
           {!grouped && (
             <div className="flex items-baseline gap-2">
+              <Badge user={author} />
               <span
                 onClick={() => author && openProfile(author.id)}
                 onContextMenu={onAuthorContext}

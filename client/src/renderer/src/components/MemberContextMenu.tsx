@@ -28,16 +28,20 @@ export function MemberContextMenu() {
   const me = useAuthStore((s) => s.user);
   const perms = useAuthStore((s) => s.permissions);
 
-  const [sub, setSub] = useState<'roles' | 'timeout' | null>(null);
+  const [sub, setSub] = useState<'roles' | 'timeout' | 'badge' | null>(null);
   const [confirm, setConfirm] = useState<'kick' | 'ban' | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [badgeText, setBadgeText] = useState('');
+  const [badgeColor, setBadgeColor] = useState('#7d6fc4');
 
   useEffect(() => {
     setSub(null);
     setConfirm(null);
     setError(null);
-  }, [menu?.userId]);
+    setBadgeText(target?.badge ?? '');
+    setBadgeColor(target?.badgeColor ?? '#7d6fc4');
+  }, [menu?.userId, target?.badge, target?.badgeColor]);
 
   useEffect(() => {
     if (!menu) return;
@@ -153,6 +157,9 @@ export function MemberContextMenu() {
             {perms?.canManageRoles && (
               <Item label="assign roles" arrow onClick={() => setSub('roles')} />
             )}
+            {perms?.canManageRoles && (
+              <Item label="префикс-бейдж" arrow onClick={() => setSub('badge')} />
+            )}
 
             {canModerate && (perms?.canTimeout || perms?.canKick || perms?.canBan) && (
               <div className="my-1 border-t border-glass-border" />
@@ -196,6 +203,72 @@ export function MemberContextMenu() {
               })}
               {sortedRoles.length === 0 && (
                 <p className="px-3 py-2 text-xs text-text-muted">no roles yet — create some.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {sub === 'badge' && (
+          <div className="mt-1 px-2 pb-2">
+            <button onClick={() => setSub(null)} className="mb-1 px-1 py-1 text-xs text-text-muted hover:text-accent-violet">
+              ‹ назад
+            </button>
+            <div className="mb-2 flex gap-1.5">
+              {['root', 'dev', 'vip', 'og'].map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setBadgeText(p)}
+                  className="rounded-md px-2 py-1 text-[11px] text-text-primary transition hover:bg-[rgba(125,111,196,0.15)]"
+                  style={{ background: 'rgba(125,111,196,0.08)' }}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            <div className="mb-2 flex items-center gap-1.5">
+              <input
+                value={badgeText}
+                onChange={(e) => setBadgeText(e.target.value.slice(0, 16))}
+                placeholder="текст бейджа"
+                className="glass-input !py-1 flex-1 text-xs"
+              />
+              <input
+                type="color"
+                value={badgeColor}
+                onChange={(e) => setBadgeColor(e.target.value)}
+                className="h-7 w-8 shrink-0 cursor-pointer rounded border border-glass-border bg-transparent"
+                title="цвет"
+              />
+            </div>
+            {badgeText && (
+              <div className="mb-2 flex items-center gap-1.5 px-0.5">
+                <span className="text-[10px] text-text-muted">превью:</span>
+                <span
+                  className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase"
+                  style={{ color: badgeColor, background: `${badgeColor}22`, border: `1px solid ${badgeColor}66` }}
+                >
+                  {badgeText}
+                </span>
+              </div>
+            )}
+            <div className="flex gap-1.5">
+              <button
+                disabled={busy}
+                onClick={() => run(() => api.setUserBadge(target.id, badgeText.trim() || null, badgeColor))}
+                className="flex-1 rounded-md px-2 py-1.5 text-xs font-semibold text-text-heading"
+                style={{ background: 'linear-gradient(135deg,#7d6fc4,#d4537e)' }}
+              >
+                выдать
+              </button>
+              {target.badge && (
+                <button
+                  disabled={busy}
+                  onClick={() => run(() => api.setUserBadge(target.id, null))}
+                  className="rounded-md px-2 py-1.5 text-xs text-text-muted hover:text-accent-pink"
+                  style={{ background: 'rgba(125,111,196,0.1)' }}
+                >
+                  снять
+                </button>
               )}
             </div>
           </div>

@@ -1,6 +1,7 @@
 // Main column in DM view: one-on-one conversation with the same features as a
 // channel (reply / edit / delete / attachments / media viewer).
 import { useEffect, useRef, useState } from 'react';
+import type { PublicUser } from '@sephraxia/shared';
 import { useChatStore } from '../store/chat';
 import { useAuthStore } from '../store/auth';
 import { useUiStore } from '../store/ui';
@@ -11,12 +12,14 @@ import * as voice from '../lib/voice';
 import { useAttachments } from '../lib/useAttachments';
 import { useVoiceRecorder } from '../lib/useVoiceRecorder';
 import { Avatar } from './Avatar';
-import { nameColor, displayName } from '../lib/roles';
+import { personalColor, displayName } from '../lib/roles';
 import { DmMessageItem } from './DmMessageItem';
 import { AttachmentTray } from './AttachmentTray';
 import { ReplyBar } from './ReplyBar';
 import { VoiceRecordBar } from './VoiceRecordBar';
-import { PhoneIcon, PlusIcon, MicIcon } from './icons';
+import { EmojiPicker } from './EmojiPicker';
+import { useMentions, MentionPopup } from './Mentions';
+import { PhoneIcon, PlusIcon, MicIcon, SmileIcon } from './icons';
 
 export function DmChat() {
   const activeDmUserId = useUiStore((s) => s.activeDmUserId);
@@ -34,9 +37,13 @@ export function DmChat() {
 
   const [draft, setDraft] = useState('');
   const [dragging, setDragging] = useState(false);
+  const [emojiAt, setEmojiAt] = useState<{ x: number; y: number } | null>(null);
   const { pending, uploadFiles, removePending, clearPending, uploading, ready } = useAttachments();
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // DM mentions only make sense for the two participants.
+  const mentionCandidates = [partner, me].filter(Boolean) as PublicUser[];
+  const mentions = useMentions(draft, setDraft, mentionCandidates, inputRef);
   const fileInput = useRef<HTMLInputElement>(null);
   const stick = useRef(true);
 
@@ -129,7 +136,7 @@ export function DmChat() {
       <div className="flex items-center justify-between border-b border-glass-border px-5 py-3">
         <button onClick={() => openProfile(partner.id)} className="flex min-w-0 items-center gap-2">
           <Avatar username={displayName(partner)} avatarUrl={partner.avatarUrl} size={26} />
-          <span className="heading-glow truncate text-sm font-semibold" style={{ color: nameColor(partner) }}>
+          <span className="heading-glow truncate text-sm font-semibold" style={{ color: personalColor(partner) }}>
             {displayName(partner)}
           </span>
           <span className="truncate text-[11px] text-text-muted">@{partner.username}</span>
@@ -194,30 +201,45 @@ export function DmChat() {
                 >
                   <PlusIcon size={20} />
                 </button>
-                <textarea
-                  ref={inputRef}
-                  value={draft}
-                  rows={1}
-                  onChange={(e) => {
-                    setDraft(e.target.value);
-                    autoGrow();
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      send();
-                    }
-                  }}
-                  onPaste={(e) => {
-                    const files = Array.from(e.clipboardData.files);
-                    if (files.length > 0) {
-                      e.preventDefault();
-                      uploadFiles(files);
-                    }
-                  }}
-                  placeholder={`message @${partner.username}`}
-                  className="glass-input max-h-40 resize-none"
-                />
+                <div className="relative min-w-0 flex-1">
+                  <MentionPopup matches={mentions.matches} index={mentions.index} onPick={mentions.choose} />
+                  <textarea
+                    ref={inputRef}
+                    value={draft}
+                    rows={1}
+                    onChange={(e) => {
+                      setDraft(e.target.value);
+                      autoGrow();
+                    }}
+                    onKeyDown={(e) => {
+                      if (mentions.handleKeyDown(e)) return;
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        send();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      const files = Array.from(e.clipboardData.files);
+                      if (files.length > 0) {
+                        e.preventDefault();
+                        uploadFiles(files);
+                      }
+                    }}
+                    placeholder={`написать @${partner.username}`}
+                    className="glass-input max-h-40 w-full resize-none pr-10"
+                  />
+                  <button
+                    type="button"
+                    title="эмодзи"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setEmojiAt({ x: rect.left + rect.width / 2, y: rect.top });
+                    }}
+                    className="absolute bottom-2.5 right-2.5 text-text-muted transition hover:text-accent-violet"
+                  >
+                    <SmileIcon size={18} />
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={recorder.start}
@@ -232,6 +254,20 @@ export function DmChat() {
           </>
         )}
       </div>
+
+      {emojiAt && (
+        <EmojiPicker
+          x={emojiAt.x}
+          y={emojiAt.y}
+          up
+          onClose={() => setEmojiAt(null)}
+          onPick={(emoji) => {
+            setDraft((d) => d + emoji);
+            setEmojiAt(null);
+            inputRef.current?.focus();
+          }}
+        />
+      )}
 
       {dragging && (
         <div

@@ -22,6 +22,8 @@ const imageUrl = z
   .max(2048)
   .refine((v) => v === '' || /^(https?:|data:image\/|\/uploads\/)/.test(v), 'must be an image url');
 
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+
 const updateProfileSchema = z.object({
   // empty string clears the avatar; otherwise must be an http(s) / data / upload URL
   avatarUrl: imageUrl.nullish(),
@@ -29,6 +31,28 @@ const updateProfileSchema = z.object({
   displayName: z.string().trim().max(32).nullish(), // empty clears → falls back to username
   bio: z.string().trim().max(300).nullish(), // empty clears
   status: z.enum(['online', 'idle', 'dnd']).optional(),
+  // cosmetics
+  accentColor: hexColor.nullish(),
+  cheats: z.array(z.string().trim().max(24)).max(12).optional(),
+  links: z
+    .array(z.object({ label: z.string().trim().max(40), url: z.string().trim().max(400) }))
+    .max(8)
+    .optional(),
+  profileCfg: z
+    .object({
+      show: z
+        .object({
+          cheats: z.boolean().optional(),
+          links: z.boolean().optional(),
+          uid: z.boolean().optional(),
+          joined: z.boolean().optional(),
+          status: z.boolean().optional(),
+        })
+        .optional(),
+      ring: z.enum(['solid', 'glow', 'gradient', 'none']).optional(),
+      bannerOpacity: z.number().int().min(0).max(100).optional(),
+    })
+    .nullish(),
 });
 
 const withRoles = { roles: true } as const;
@@ -63,6 +87,10 @@ export async function userRoutes(app: FastifyInstance) {
       displayName?: string | null;
       bio?: string | null;
       status?: string;
+      accentColor?: string | null;
+      cheats?: string;
+      links?: string;
+      profileCfg?: string | null;
     } = {};
     if (parsed.data.avatarUrl !== undefined) {
       data.avatarUrl = parsed.data.avatarUrl ? parsed.data.avatarUrl : null;
@@ -77,6 +105,16 @@ export async function userRoutes(app: FastifyInstance) {
       data.bio = parsed.data.bio ? parsed.data.bio : null;
     }
     if (parsed.data.status !== undefined) data.status = parsed.data.status;
+    if (parsed.data.accentColor !== undefined) data.accentColor = parsed.data.accentColor ?? null;
+    if (parsed.data.cheats !== undefined) {
+      data.cheats = parsed.data.cheats.map((c) => c.toLowerCase()).join(',');
+    }
+    if (parsed.data.links !== undefined) {
+      data.links = JSON.stringify(parsed.data.links.filter((l) => l.label && l.url));
+    }
+    if (parsed.data.profileCfg !== undefined) {
+      data.profileCfg = parsed.data.profileCfg ? JSON.stringify(parsed.data.profileCfg) : null;
+    }
 
     const updated = await prisma.user.update({
       where: { id: request.user!.sub },
@@ -157,6 +195,31 @@ export async function userRoutes(app: FastifyInstance) {
     const updated = await prisma.user.update({
       where: { id },
       data: { uid: body.data.uid },
+      include: withRoles,
+    });
+    const pub = toPublicUser(updated);
+    broadcastUserUpdate(pub);
+    return pub;
+  });
+
+  // Admin-granted prefix badge (owner / canManageRoles). Empty clears it.
+  app.patch('/users/:id/badge', async (request, reply) => {
+    const perms = await getPermissions(request.user!.sub);
+    if (!perms.canManageRoles) return reply.code(403).send({ error: 'нельзя выдавать бейджи' });
+    const body = z
+      .object({
+        badge: z.string().trim().max(16).nullable(),
+        badgeColor: hexColor.nullish(),
+      })
+      .safeParse(request.body);
+    if (!body.success) return reply.code(400).send({ error: 'badge required' });
+    const { id } = request.params as { id: string };
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        badge: body.data.badge || null,
+        badgeColor: body.data.badge ? body.data.badgeColor ?? '#7d6fc4' : null,
+      },
       include: withRoles,
     });
     const pub = toPublicUser(updated);

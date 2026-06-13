@@ -4,6 +4,7 @@ import type { PublicUser, Role } from '@sephraxia/shared';
 import { useChatStore } from '../store/chat';
 import { useUiStore } from '../store/ui';
 import { Avatar } from './Avatar';
+import { Badge } from './Badge';
 import { nameColor, roleSymbol, displayName, topRole } from '../lib/roles';
 
 const STATUS_CLASS: Record<string, string> = {
@@ -107,9 +108,10 @@ function Section({
               />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm leading-4" style={{ color: nameColor(u) }}>
-                {roleSymbol(u) && <span className="mr-1">{roleSymbol(u)}</span>}
-                {displayName(u)}
+              <p className="flex items-center gap-1 truncate text-sm leading-4" style={{ color: nameColor(u) }}>
+                <Badge user={u} size="xs" />
+                {roleSymbol(u) && <span>{roleSymbol(u)}</span>}
+                <span className="truncate">{displayName(u)}</span>
               </p>
               {u.displayName && (
                 <p className="truncate text-[10px] leading-3 text-text-muted">@{u.username}</p>

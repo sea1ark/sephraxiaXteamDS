@@ -69,7 +69,22 @@ interface DbUser {
   createdAt: Date;
   mutedUntil?: Date | null;
   bannedAt?: Date | null;
+  accentColor?: string | null;
+  cheats?: string | null;
+  links?: string | null;
+  profileCfg?: string | null;
+  badge?: string | null;
+  badgeColor?: string | null;
   roles?: DbRole[];
+}
+
+function parseJson<T>(raw: string | null | undefined, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
 }
 
 export function toRole(r: DbRole): Role {
@@ -102,6 +117,12 @@ export function toPublicUser(u: DbUser): PublicUser {
     bio: u.bio ?? null,
     status: u.status as PublicUser['status'],
     isOwner: u.isOwner,
+    accentColor: u.accentColor ?? null,
+    cheats: u.cheats ? u.cheats.split(',').map((c) => c.trim()).filter(Boolean) : [],
+    links: parseJson<PublicUser['links']>(u.links, []),
+    profileCfg: parseJson<PublicUser['profileCfg']>(u.profileCfg, null),
+    badge: u.badge ?? null,
+    badgeColor: u.badgeColor ?? null,
     createdAt: u.createdAt.toISOString(),
     mutedUntil: muted,
     banned: u.bannedAt != null ? true : undefined,

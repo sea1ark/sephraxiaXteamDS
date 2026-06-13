@@ -19,17 +19,38 @@ export function Login() {
 
   // After a manual check, announce the outcome so the button never feels dead.
   const checkedManually = useRef(false);
+  const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function finishCheck() {
+    checkedManually.current = false;
+    if (watchdog.current) {
+      clearTimeout(watchdog.current);
+      watchdog.current = null;
+    }
+  }
+  function startCheck() {
+    checkedManually.current = true;
+    if (watchdog.current) clearTimeout(watchdog.current);
+    // If GitHub never answers (offline / blocked), don't leave the user hanging.
+    watchdog.current = setTimeout(() => {
+      if (checkedManually.current) {
+        toast('обновления недоступны — нет ответа от github', 'error');
+        finishCheck();
+      }
+    }, 12000);
+    toast('проверяю обновления…', 'info');
+    update.check();
+  }
   useEffect(() => {
     if (!checkedManually.current) return;
     if (update.upToDate) {
       toast('у тебя актуальная версия ✦', 'success');
-      checkedManually.current = false;
+      finishCheck();
     } else if (update.status.state === 'error') {
       toast('не удалось проверить обновления', 'error');
-      checkedManually.current = false;
+      finishCheck();
     } else if (update.hasUpdate) {
-      toast('найдено обновление — качаю…', 'info');
-      checkedManually.current = false;
+      toast('найдено обновление — качаю…', 'success');
+      finishCheck();
     }
   }, [update.upToDate, update.status.state, update.hasUpdate]);
 
@@ -170,9 +191,7 @@ export function Login() {
               if (update.hasUpdate) {
                 update.install();
               } else {
-                checkedManually.current = true;
-                toast('проверяю обновления…', 'info');
-                update.check();
+                startCheck();
               }
             }}
             disabled={update.checking}

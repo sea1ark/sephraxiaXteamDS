@@ -5,6 +5,31 @@
 export type UserStatus = 'online' | 'idle' | 'dnd' | 'offline';
 export type ChannelType = 'text' | 'voice';
 
+/** A labelled external link shown on a profile (e.g. an HVH profile). */
+export interface ProfileLink {
+  label: string;
+  url: string;
+}
+
+/** Which optional profile cells a user shows, plus card styling. */
+export interface ProfileConfig {
+  show?: {
+    cheats?: boolean;
+    links?: boolean;
+    uid?: boolean;
+    joined?: boolean;
+    status?: boolean;
+  };
+  /** Profile outline style. */
+  ring?: 'solid' | 'glow' | 'gradient' | 'none';
+  /** Banner opacity 0–100. */
+  bannerOpacity?: number;
+}
+
+/** Known cheat projects (used for the showcase icons). */
+export const CHEAT_PROJECTS = ['skeet', 'neverlose', 'fatality', 'pandora', 'monolith'] as const;
+export type CheatProject = (typeof CHEAT_PROJECTS)[number];
+
 export interface User {
   id: string;
   uid: number | null; // sequential public id (1, 2, 3…); null until assigned
@@ -15,6 +40,13 @@ export interface User {
   bio: string | null; // short "about me" on the profile card
   status: UserStatus;
   isOwner: boolean;
+  // Cosmetics
+  accentColor: string | null; // custom profile accent
+  cheats: string[]; // project keys the user runs (skeet, neverlose, …)
+  links: ProfileLink[]; // labelled external links (e.g. HVH profiles)
+  profileCfg: ProfileConfig | null; // profile-card layout config
+  badge: string | null; // admin-granted prefix text
+  badgeColor: string | null; // badge colour
   createdAt: string; // ISO string over the wire
   mutedUntil?: string | null; // timeout expiry (ISO); null/absent = not timed out
 }
@@ -232,6 +264,17 @@ export interface UpdateProfilePayload {
   displayName?: string | null; // empty/null clears it (falls back to username)
   bio?: string | null; // empty/null clears it
   status?: Exclude<UserStatus, 'offline'>; // can't manually set yourself offline
+  // Cosmetics (self-editable)
+  accentColor?: string | null;
+  cheats?: string[];
+  links?: ProfileLink[];
+  profileCfg?: ProfileConfig | null;
+}
+
+/** Admin-granted badge update (owner / canManageRoles). */
+export interface BadgePayload {
+  badge: string | null;
+  badgeColor?: string | null;
 }
 
 export interface AuthTokens {

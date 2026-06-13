@@ -75,6 +75,10 @@ async function main() {
   await ensureOwner();
   await assignUids();
   await ensureHomeServer();
+  // Give the platform owner a "root" badge if they don't have one yet.
+  await prisma.user
+    .updateMany({ where: { isOwner: true, badge: null }, data: { badge: 'root', badgeColor: '#ff4d6d' } })
+    .catch(() => {});
 
   // Bind Socket.io to Fastify's underlying HTTP server. `ready()` ensures the
   // server exists before we attach.

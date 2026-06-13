@@ -1,7 +1,7 @@
 // Full-screen settings, Discord-style: sidebar navigation on the left, content
 // pages on the right, solid (non-transparent) surfaces. Esc closes.
 import { useEffect, useRef, useState } from 'react';
-import type { UserStatus } from '@sephraxia/shared';
+import type { UserStatus, ProfileLink, ProfileConfig } from '@sephraxia/shared';
 import { api, ApiError } from '../lib/api';
 import { useUiStore } from '../store/ui';
 import { useAuthStore } from '../store/auth';
@@ -11,7 +11,8 @@ import * as voice from '../lib/voice';
 import { resolveAssetUrl, getServerUrl } from '../lib/config';
 import { Avatar } from './Avatar';
 import { toast } from '../store/toasts';
-import { CloseIcon, MicIcon, SettingsIcon, UsersIcon } from './icons';
+import { ProjectIcon, KNOWN_PROJECTS, PROJECT_LABEL } from './ProjectIcon';
+import { CloseIcon, MicIcon, SettingsIcon, UsersIcon, PlusIcon, TrashIcon } from './icons';
 
 const STATUSES: { value: Exclude<UserStatus, 'offline'>; label: string; dot: string }[] = [
   { value: 'online', label: 'в сети', dot: 'status-online' },
@@ -38,6 +39,19 @@ export function SettingsModal() {
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [status, setStatus] = useState<Exclude<UserStatus, 'offline'>>('online');
+  // cosmetics
+  const [accentColor, setAccentColor] = useState('#7d6fc4');
+  const [accentOn, setAccentOn] = useState(false);
+  const [cheats, setCheats] = useState<string[]>([]);
+  const [links, setLinks] = useState<ProfileLink[]>([]);
+  const [ring, setRing] = useState<NonNullable<ProfileConfig['ring']>>('glow');
+  const [showCells, setShowCells] = useState<Record<string, boolean>>({
+    uid: true,
+    status: true,
+    joined: true,
+    cheats: true,
+    links: true,
+  });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -62,6 +76,18 @@ export function SettingsModal() {
     setDisplayName(user.displayName ?? '');
     setBio(user.bio ?? '');
     setStatus(user.status === 'offline' ? 'online' : user.status);
+    setAccentOn(!!user.accentColor);
+    setAccentColor(user.accentColor ?? '#7d6fc4');
+    setCheats(user.cheats ?? []);
+    setLinks(user.links ?? []);
+    setRing(user.profileCfg?.ring ?? 'glow');
+    setShowCells({
+      uid: user.profileCfg?.show?.uid !== false,
+      status: user.profileCfg?.show?.status !== false,
+      joined: user.profileCfg?.show?.joined !== false,
+      cheats: user.profileCfg?.show?.cheats !== false,
+      links: user.profileCfg?.show?.links !== false,
+    });
     setError(null);
     voice.listDevices().then(setDevices).catch(() => {});
     window.sephraxia?.app?.version?.().then(setVersion).catch(() => {});
@@ -114,6 +140,19 @@ export function SettingsModal() {
         displayName: displayName.trim(),
         bio: bio.trim(),
         status,
+        accentColor: accentOn ? accentColor : null,
+        cheats,
+        links: links.filter((l) => l.label.trim() && l.url.trim()),
+        profileCfg: {
+          ring,
+          show: {
+            uid: showCells.uid,
+            status: showCells.status,
+            joined: showCells.joined,
+            cheats: showCells.cheats,
+            links: showCells.links,
+          },
+        },
       });
       patchUser(updated);
       upsertUser(updated);
@@ -310,6 +349,127 @@ export function SettingsModal() {
                     {s.label}
                   </button>
                 ))}
+              </div>
+
+              {/* ── кастомизация ──────────────────────────────────────── */}
+              <div className="mb-7 border-t border-glass-border pt-6">
+                <h3 className="heading-glow mb-4 text-sm font-semibold tracking-[0.15em]">кастомизация ✦</h3>
+
+                {/* accent */}
+                <div className="mb-5 flex items-center justify-between rounded-[12px] px-4 py-3" style={inputStyle}>
+                  <div>
+                    <p className="text-sm text-text-primary">свой акцент</p>
+                    <p className="text-[10px] text-text-muted">цвет имени и обводки в профиле (вместо роли)</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {accentOn && (
+                      <input
+                        type="color"
+                        value={accentColor}
+                        onChange={(e) => setAccentColor(e.target.value)}
+                        className="h-8 w-10 cursor-pointer rounded border border-glass-border bg-transparent"
+                      />
+                    )}
+                    <button
+                      onClick={() => setAccentOn((v) => !v)}
+                      className="relative h-5 w-9 shrink-0 rounded-full transition"
+                      style={{ background: accentOn ? 'rgba(125,111,196,0.85)' : 'rgba(109,102,128,0.35)' }}
+                      role="switch"
+                      aria-checked={accentOn}
+                    >
+                      <span className="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all" style={{ left: accentOn ? '18px' : '2px' }} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* outline / ring */}
+                <label className="section-label mb-2 block">обводка профиля</label>
+                <div className="mb-5 flex gap-2">
+                  {(['glow', 'solid', 'gradient', 'none'] as const).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setRing(r)}
+                      className="flex-1 rounded-[10px] px-2 py-2 text-xs transition"
+                      style={ring === r ? { background: 'rgba(125,111,196,0.22)', color: '#e2d8fa', border: '1px solid rgba(125,111,196,0.55)' } : { ...inputStyle, color: '#6d6680' }}
+                    >
+                      {r === 'glow' ? 'свечение' : r === 'solid' ? 'контур' : r === 'gradient' ? 'градиент' : 'без'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* cheats showcase */}
+                <label className="section-label mb-2 block">мои читы</label>
+                <div className="mb-5 flex flex-wrap gap-2">
+                  {KNOWN_PROJECTS.map((p) => {
+                    const on = cheats.includes(p);
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setCheats((cs) => (on ? cs.filter((c) => c !== p) : [...cs, p]))}
+                        className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition"
+                        style={on ? { background: 'rgba(125,111,196,0.22)', color: '#e2d8fa', border: '1px solid rgba(125,111,196,0.55)' } : { ...inputStyle, color: '#8a8398' }}
+                      >
+                        <ProjectIcon project={p} size={15} />
+                        {PROJECT_LABEL[p]}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* links */}
+                <label className="section-label mb-2 block">ссылки (hvh-профили и т.п.)</label>
+                <div className="mb-2 space-y-2">
+                  {links.map((l, i) => (
+                    <div key={i} className="flex gap-2">
+                      <input
+                        value={l.label}
+                        onChange={(e) => setLinks((ls) => ls.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
+                        placeholder="название"
+                        className="glass-input !py-1.5 w-32 text-sm"
+                        style={inputStyle}
+                      />
+                      <input
+                        value={l.url}
+                        onChange={(e) => setLinks((ls) => ls.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))}
+                        placeholder="https://…"
+                        className="glass-input !py-1.5 min-w-0 flex-1 text-sm"
+                        style={{ ...inputStyle, textTransform: 'none' }}
+                      />
+                      <button onClick={() => setLinks((ls) => ls.filter((_, j) => j !== i))} className="icon-btn !h-9 !w-9 hover:!text-accent-pink">
+                        <TrashIcon size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {links.length < 8 && (
+                  <button
+                    onClick={() => setLinks((ls) => [...ls, { label: '', url: '' }])}
+                    className="mb-5 flex items-center gap-1.5 text-xs text-text-muted hover:text-accent-violet"
+                  >
+                    <PlusIcon size={14} /> добавить ссылку
+                  </button>
+                )}
+
+                {/* show/hide cells */}
+                <label className="section-label mb-2 block">что показывать в профиле</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { k: 'uid', label: 'uid' },
+                    { k: 'status', label: 'статус' },
+                    { k: 'joined', label: 'дата' },
+                    { k: 'cheats', label: 'читы' },
+                    { k: 'links', label: 'ссылки' },
+                  ].map((c) => (
+                    <button
+                      key={c.k}
+                      onClick={() => setShowCells((s) => ({ ...s, [c.k]: !s[c.k] }))}
+                      className="rounded-full px-3 py-1 text-xs transition"
+                      style={showCells[c.k] ? { background: 'rgba(125,111,196,0.2)', color: '#e2d8fa' } : { ...inputStyle, color: '#6d6680' }}
+                    >
+                      {showCells[c.k] ? '✓ ' : ''}{c.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {error && <p className="mb-4 text-sm text-accent-pink">{error}</p>}

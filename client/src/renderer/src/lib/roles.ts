@@ -13,6 +13,21 @@ export function nameColor(user: Pick<PublicUser, 'roles'> | undefined): string {
   return topRole(user)?.color ?? DEFAULT_COLOR;
 }
 
+/**
+ * Colour for contexts where server roles don't apply (DMs, friends): the
+ * user's own chosen accent, or the neutral default — never a role colour.
+ */
+export function personalColor(user: Pick<PublicUser, 'accentColor'> | undefined): string {
+  return user?.accentColor ?? DEFAULT_COLOR;
+}
+
+/** The accent for a profile card: custom accent first, else top role, else default. */
+export function profileAccent(
+  user: (Pick<PublicUser, 'roles'> & Pick<PublicUser, 'accentColor'>) | undefined,
+): string {
+  return user?.accentColor ?? topRole(user)?.color ?? DEFAULT_COLOR;
+}
+
 /** e.g. "✦" — the symbol of the highest role, or empty string. */
 export function roleSymbol(user: Pick<PublicUser, 'roles'> | undefined): string {
   return topRole(user)?.symbol ?? '';

@@ -179,6 +179,13 @@ export const api = {
   setUserUid: (id: string, uid: number) =>
     request<PublicUser>(`/users/${id}/uid`, { method: 'PATCH', body: JSON.stringify({ uid }) }),
 
+  // Admin-granted prefix badge (owner / canManageRoles). null clears it.
+  setUserBadge: (id: string, badge: string | null, badgeColor?: string | null) =>
+    request<PublicUser>(`/users/${id}/badge`, {
+      method: 'PATCH',
+      body: JSON.stringify({ badge, badgeColor }),
+    }),
+
   // Upload an arbitrary file as a message attachment; returns its metadata.
   uploadFile: async (file: File): Promise<Attachment> => {
     const { accessToken } = useAuthStore.getState();

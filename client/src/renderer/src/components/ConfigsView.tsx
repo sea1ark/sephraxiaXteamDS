@@ -16,8 +16,11 @@ import { SearchIcon, PlusIcon, TrashIcon, CloseIcon, ChevronDownIcon } from './i
 
 // Known projects get a colour; others fall back to violet.
 const PROJECT_META: Record<string, { color: string; glow: string }> = {
+  skeet: { color: '#95b607', glow: 'rgba(149,182,7,0.22)' },
   neverlose: { color: '#3e7bdb', glow: 'rgba(62,123,219,0.22)' },
-  skeet: { color: '#d4a13e', glow: 'rgba(212,161,62,0.22)' },
+  fatality: { color: '#e0913a', glow: 'rgba(224,145,58,0.22)' },
+  pandora: { color: '#c264e0', glow: 'rgba(194,100,224,0.22)' },
+  monolith: { color: '#9aa3b2', glow: 'rgba(154,163,178,0.22)' },
   gamesense: { color: '#d4537e', glow: 'rgba(212,83,126,0.22)' },
 };
 const DEFAULT_META = { color: '#7d6fc4', glow: 'rgba(125,111,196,0.22)' };
@@ -297,7 +300,23 @@ function ConfigCard({
           <span className="truncate text-[11px] text-text-muted">{displayName(post.author)}</span>
         </button>
         <span className="ml-auto" />
-        <button onClick={() => copyText(post.fileName, 'имя скопировано')} className="icon-btn !h-7 !w-7" title="скопировать имя файла">
+        <button
+          onClick={async () => {
+            let body = text;
+            if (body === null) {
+              try {
+                body = (await (await fetch(src)).text()).slice(0, 512 * 1024);
+                setText(body);
+              } catch {
+                body = null;
+              }
+            }
+            if (body !== null) copyText(body, 'содержимое скопировано');
+            else copyText(post.fileName, 'имя скопировано (файл не прочитать)');
+          }}
+          className="icon-btn !h-7 !w-7"
+          title="скопировать содержимое"
+        >
           ⧉
         </button>
         <button onClick={preview} className={`icon-btn !h-7 !w-7 ${open ? 'active' : ''}`} title="превью">

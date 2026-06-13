@@ -79,7 +79,19 @@ export function Layout() {
       if (reason !== 'io client disconnect') toast('соединение потеряно — переподключаюсь…', 'error');
     });
 
-    socket.on('message:new', (msg) => addMessage(msg));
+    socket.on('message:new', (msg) => {
+      addMessage(msg);
+      // @-mention ping: toast if I'm mentioned and not the author.
+      const myName = useAuthStore.getState().user?.username;
+      if (myName && msg.authorId !== myId && new RegExp(`@${myName}\\b`, 'i').test(msg.content)) {
+        const ch = useChatStore.getState().channels.find((c) => c.id === msg.channelId);
+        const who = msg.author ? displayName(msg.author) : 'кто-то';
+        toast(`${who} упомянул тебя${ch ? ` в #${ch.name}` : ''}`, 'message', msg.content, () => {
+          useUiStore.getState().showServer();
+          useChatStore.getState().setActiveChannel(msg.channelId);
+        });
+      }
+    });
     socket.on('message:update', (msg) => updateMessage(msg));
     socket.on('message:delete', ({ messageId, channelId }) => removeMessage(channelId, messageId));
     socket.on('dm:new', (dm) => {

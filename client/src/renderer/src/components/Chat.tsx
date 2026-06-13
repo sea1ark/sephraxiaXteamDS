@@ -12,6 +12,7 @@ import { AttachmentTray } from './AttachmentTray';
 import { ReplyBar } from './ReplyBar';
 import { VoiceRecordBar } from './VoiceRecordBar';
 import { EmojiPicker } from './EmojiPicker';
+import { useMentions, MentionPopup } from './Mentions';
 import { PinsPanel, SearchPanel } from './ChatPanels';
 import {
   PlusIcon,
@@ -90,6 +91,7 @@ export function Chat() {
   const channel = channels.find((c) => c.id === activeId);
   const mutedUntil = me?.mutedUntil ? new Date(me.mutedUntil) : null;
   const muted = !!mutedUntil && mutedUntil.getTime() > Date.now();
+  const mentions = useMentions(draft, setDraft, users, inputRef);
 
   function onScroll() {
     const el = scrollRef.current;
@@ -410,6 +412,7 @@ export function Chat() {
                   <PlusIcon size={20} />
                 </button>
                 <div className="relative min-w-0 flex-1">
+                  <MentionPopup matches={mentions.matches} index={mentions.index} onPick={mentions.choose} />
                   <textarea
                     ref={inputRef}
                     value={draft}
@@ -420,6 +423,8 @@ export function Chat() {
                       emitTyping();
                     }}
                     onKeyDown={(e) => {
+                      // Mention popup gets first dibs on navigation/select keys.
+                      if (mentions.handleKeyDown(e)) return;
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         send();

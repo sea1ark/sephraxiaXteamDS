@@ -22,6 +22,15 @@ model User {
   bio          String? // short "about me" shown on the profile card
   status       String   @default("offline") // online | idle | dnd | offline
   isOwner      Boolean  @default(false) // bypasses all permission checks
+
+  // Cosmetics
+  accentColor String? // custom profile accent (overrides role colour on own profile)
+  cheats      String  @default("") // csv of project keys: skeet,neverlose,fatality,…
+  links       String? // JSON [{label,url}] — e.g. links to HVH profiles
+  profileCfg  String? // JSON profile-card config (shown cells, banner mode, etc.)
+  // Admin-granted prefix badge (separate from self-customization)
+  badge       String? // short text shown before the name, e.g. "root" / "dev"
+  badgeColor  String? // hex colour for the badge
   createdAt    DateTime @default(now())
 
   // Moderation state (global; this is a single-community server)

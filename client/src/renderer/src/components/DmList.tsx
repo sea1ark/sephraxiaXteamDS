@@ -3,7 +3,7 @@ import { useChatStore } from '../store/chat';
 import { useUiStore } from '../store/ui';
 import { Avatar } from './Avatar';
 import { UserFooter } from './UserFooter';
-import { nameColor, displayName } from '../lib/roles';
+import { personalColor, displayName } from '../lib/roles';
 
 export function DmList() {
   const conversations = useChatStore((s) => s.dmConversations);
@@ -30,7 +30,7 @@ export function DmList() {
               <div className="min-w-0 flex-1">
                 <div
                   className={`truncate text-sm ${isUnread ? 'font-semibold text-text-heading' : ''}`}
-                  style={{ color: nameColor(c.user) }}
+                  style={{ color: personalColor(c.user) }}
                 >
                   {displayName(c.user)}
                 </div>

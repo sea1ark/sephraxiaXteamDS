@@ -4,8 +4,39 @@
 //   ```
 // Code renders in a monospace card with a copy button — built for sharing
 // lua scripts and cfg dumps without mangling whitespace.
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { copyText } from '../lib/clipboard';
+import { useChatStore } from '../store/chat';
+import { useAuthStore } from '../store/auth';
+
+/** Render a text run, turning @username into a highlighted mention pill. */
+function renderText(text: string): React.ReactNode {
+  const users = useChatStore.getState().users;
+  const myName = useAuthStore.getState().user?.username?.toLowerCase();
+  const parts = text.split(/(@[a-zA-Z0-9_.-]+)/g);
+  return parts.map((part, i) => {
+    if (part[0] === '@') {
+      const handle = part.slice(1).toLowerCase();
+      const user = users.find((u) => u.username.toLowerCase() === handle);
+      if (user) {
+        const isMe = myName === handle;
+        return (
+          <span
+            key={i}
+            className="rounded px-1 font-medium"
+            style={{
+              color: isMe ? '#ffd9e4' : '#b9aef0',
+              background: isMe ? 'rgba(212,83,126,0.28)' : 'rgba(125,111,196,0.22)',
+            }}
+          >
+            @{user.username}
+          </span>
+        );
+      }
+    }
+    return <Fragment key={i}>{part}</Fragment>;
+  });
+}
 
 interface Segment {
   kind: 'text' | 'code';
@@ -81,7 +112,7 @@ export function MessageContent({ content }: { content: string }) {
         ) : (
           s.body.trim() && (
             <p key={i} className="whitespace-pre-wrap break-words">
-              {s.body.replace(/^\n+|\n+$/g, '')}
+              {renderText(s.body.replace(/^\n+|\n+$/g, ''))}
             </p>
           )
         ),

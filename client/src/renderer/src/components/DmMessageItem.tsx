@@ -6,8 +6,9 @@ import { useAuthStore } from '../store/auth';
 import { useChatStore } from '../store/chat';
 import { useUiStore } from '../store/ui';
 import { getSocket } from '../lib/socket';
-import { nameColor, displayName } from '../lib/roles';
+import { personalColor, displayName } from '../lib/roles';
 import { Avatar } from './Avatar';
+import { Badge } from './Badge';
 import { MessageAttachments } from './MessageAttachments';
 import { ReplyPreviewLine } from './ReplyPreviewLine';
 import { MessageContent } from './MessageContent';
@@ -26,7 +27,7 @@ export function DmMessageItem({ message }: { message: DirectMessage }) {
 
   const from: PublicUser | undefined = message.from ?? fallback;
   const isMine = message.fromId === me?.id;
-  const color = nameColor(from);
+  const color = personalColor(from);
 
   function saveEdit() {
     const content = draft.trim();
@@ -112,6 +113,7 @@ export function DmMessageItem({ message }: { message: DirectMessage }) {
           {message.replyTo && <ReplyPreviewLine reply={message.replyTo} />}
 
           <div className="flex items-baseline gap-2">
+            <Badge user={from} />
             <span
               onClick={() => from && openProfile(from.id)}
               className="cursor-pointer text-sm font-semibold hover:underline"
