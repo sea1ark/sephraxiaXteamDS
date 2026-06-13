@@ -14,6 +14,8 @@ import { SpeakerIcon, VideoIcon, ScreenShareIcon, MicOffIcon, BanIcon } from './
 
 export function ChannelList() {
   const channels = useChatStore((s) => s.channels);
+  const servers = useChatStore((s) => s.servers);
+  const activeServerId = useChatStore((s) => s.activeServerId);
   const activeId = useChatStore((s) => s.activeChannelId);
   const setActive = useChatStore((s) => s.setActiveChannel);
   const setChannels = useChatStore((s) => s.setChannels);
@@ -34,7 +36,10 @@ export function ChannelList() {
   const myId = useAuthStore((s) => s.user?.id);
   const openScreenView = useUiStore((s) => s.openScreenView);
 
-  const canManageChannels = !!permissions?.canManageChannels;
+  // Server owners manage their own server's channels even without the
+  // platform-wide permission.
+  const activeServer = servers.find((s) => s.id === activeServerId);
+  const canManageChannels = !!permissions?.canManageChannels || activeServer?.ownerId === myId;
   const canManageRoles = !!permissions?.canManageRoles;
   const canBan = !!permissions?.canBan;
   const openBans = useUiStore((s) => s.openBans);
@@ -42,14 +47,17 @@ export function ChannelList() {
   const [creating, setCreating] = useState<ChannelType | null>(null);
   const [name, setName] = useState('');
 
-  const textChannels = channels.filter((c) => c.type !== 'voice');
-  const voiceChannels = channels.filter((c) => c.type === 'voice');
+  // Only the active server's channels. Until the server list loads (or against
+  // an older backend without serverId) fall back to showing everything.
+  const scoped = activeServerId ? channels.filter((c) => c.serverId === activeServerId) : channels;
+  const textChannels = scoped.filter((c) => c.type !== 'voice');
+  const voiceChannels = scoped.filter((c) => c.type === 'voice');
 
   async function createChannel(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed || !creating) return;
-    await api.createChannel(trimmed, creating);
+    await api.createChannel(trimmed, creating, activeServerId ?? undefined);
     setChannels(await api.getChannels());
     setName('');
     setCreating(null);
@@ -90,7 +98,9 @@ export function ChannelList() {
   return (
     <div className="sx-fade glass flex w-60 flex-col rounded-glass">
       <div className="flex items-center justify-between border-b border-glass-border px-4 py-3">
-        <span className="heading-glow text-sm font-semibold tracking-[0.15em]">home</span>
+        <span className="heading-glow truncate text-sm font-semibold tracking-[0.15em]">
+          {activeServer?.name ?? 'home'}
+        </span>
         <div className="flex items-center gap-2">
           {canBan && (
             <button

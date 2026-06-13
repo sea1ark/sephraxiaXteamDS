@@ -12,6 +12,7 @@ import { dmRoutes } from './dms/routes';
 import { uploadRoutes } from './uploads/routes';
 import { moderationRoutes } from './moderation/routes';
 import { friendRoutes } from './friends/routes';
+import { serverRoutes, ensureHomeServer } from './servers/routes';
 import { setupSocket } from './socket';
 import { prisma } from './prisma';
 import { mkdir } from 'node:fs/promises';
@@ -65,9 +66,11 @@ async function main() {
   await app.register(uploadRoutes);
   await app.register(moderationRoutes);
   await app.register(friendRoutes);
+  await app.register(serverRoutes);
 
   await ensureOwner();
   await assignUids();
+  await ensureHomeServer();
 
   // Bind Socket.io to Fastify's underlying HTTP server. `ready()` ensures the
   // server exists before we attach.

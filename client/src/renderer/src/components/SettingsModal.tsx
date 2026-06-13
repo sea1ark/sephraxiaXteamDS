@@ -1,3 +1,5 @@
+// Full-screen settings, Discord-style: sidebar navigation on the left, content
+// pages on the right, solid (non-transparent) surfaces. Esc closes.
 import { useEffect, useRef, useState } from 'react';
 import type { UserStatus } from '@sephraxia/shared';
 import { api, ApiError } from '../lib/api';
@@ -6,13 +8,23 @@ import { useAuthStore } from '../store/auth';
 import { useChatStore } from '../store/chat';
 import { useVoiceStore } from '../store/voice';
 import * as voice from '../lib/voice';
-import { resolveAssetUrl } from '../lib/config';
+import { resolveAssetUrl, getServerUrl } from '../lib/config';
 import { Avatar } from './Avatar';
+import { toast } from '../store/toasts';
+import { CloseIcon, MicIcon, SettingsIcon, UsersIcon } from './icons';
 
 const STATUSES: { value: Exclude<UserStatus, 'offline'>; label: string; dot: string }[] = [
-  { value: 'online', label: 'online', dot: 'status-online' },
-  { value: 'idle', label: 'idle', dot: 'status-idle' },
-  { value: 'dnd', label: 'do not disturb', dot: 'status-dnd' },
+  { value: 'online', label: 'в сети', dot: 'status-online' },
+  { value: 'idle', label: 'отошёл', dot: 'status-idle' },
+  { value: 'dnd', label: 'не беспокоить', dot: 'status-dnd' },
+];
+
+type Tab = 'profile' | 'voice' | 'about';
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'profile', label: 'мой профиль' },
+  { id: 'voice', label: 'голос и видео' },
+  { id: 'about', label: 'о приложении' },
 ];
 
 export function SettingsModal() {
@@ -22,14 +34,15 @@ export function SettingsModal() {
   const patchUser = useAuthStore((s) => s.patchUser);
   const upsertUser = useChatStore((s) => s.upsertUser);
 
-  const [avatarUrl, setAvatarUrl] = useState('');
-  const [bannerUrl, setBannerUrl] = useState('');
+  const [tab, setTab] = useState<Tab>('profile');
   const [displayName, setDisplayName] = useState('');
+  const [bio, setBio] = useState('');
   const [status, setStatus] = useState<Exclude<UserStatus, 'offline'>>('online');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [bannerUploading, setBannerUploading] = useState(false);
+  const [version, setVersion] = useState('');
   const [devices, setDevices] = useState<{
     inputs: MediaDeviceInfo[];
     outputs: MediaDeviceInfo[];
@@ -45,26 +58,35 @@ export function SettingsModal() {
   // Seed the form from the current user whenever the modal opens.
   useEffect(() => {
     if (!open || !user) return;
-    setAvatarUrl(user.avatarUrl ?? '');
-    setBannerUrl(user.bannerUrl ?? '');
+    setTab('profile');
     setDisplayName(user.displayName ?? '');
+    setBio(user.bio ?? '');
     setStatus(user.status === 'offline' ? 'online' : user.status);
     setError(null);
     voice.listDevices().then(setDevices).catch(() => {});
+    window.sephraxia?.app?.version?.().then(setVersion).catch(() => {});
   }, [open, user]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, close]);
 
   if (!open || !user) return null;
 
-  async function uploadFile(file: File) {
+  const banner = resolveAssetUrl(user.bannerUrl);
+
+  async function uploadAvatarFile(file: File) {
     setUploading(true);
     setError(null);
     try {
       const updated = await api.uploadAvatar(file);
       patchUser(updated);
       upsertUser(updated);
-      setAvatarUrl(updated.avatarUrl ?? '');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'upload failed');
+      setError(err instanceof ApiError ? err.message : 'не удалось загрузить аватар');
     } finally {
       setUploading(false);
     }
@@ -77,9 +99,8 @@ export function SettingsModal() {
       const updated = await api.uploadBanner(file);
       patchUser(updated);
       upsertUser(updated);
-      setBannerUrl(updated.bannerUrl ?? '');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'banner upload failed');
+      setError(err instanceof ApiError ? err.message : 'не удалось загрузить баннер');
     } finally {
       setBannerUploading(false);
     }
@@ -90,216 +111,285 @@ export function SettingsModal() {
     setError(null);
     try {
       const updated = await api.updateProfile({
-        avatarUrl: avatarUrl.trim(),
-        bannerUrl: bannerUrl.trim(),
         displayName: displayName.trim(),
+        bio: bio.trim(),
         status,
       });
       patchUser(updated);
       upsertUser(updated);
-      close();
+      toast('профиль сохранён', 'success');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'could not save');
+      setError(err instanceof ApiError ? err.message : 'не удалось сохранить');
     } finally {
       setBusy(false);
     }
   }
 
+  const inputStyle = {
+    background: 'rgba(5,4,9,0.7)',
+    border: '1px solid rgba(180,160,240,0.18)',
+  };
+
   return (
     <div
-      className="sx-overlay fixed inset-0 z-50 grid place-items-center bg-black/50"
-      onClick={close}
-      style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      className="sx-overlay fixed inset-0 z-50 flex"
+      style={
+        {
+          WebkitAppRegion: 'no-drag',
+          background: 'linear-gradient(135deg, #0d0a18 0%, #070611 55%, #050409 100%)',
+        } as React.CSSProperties
+      }
     >
+      {/* ── sidebar nav ──────────────────────────────────────────────── */}
       <div
-        className="sx-pop glass max-h-[88vh] w-[440px] overflow-y-auto rounded-glass p-6"
-        onClick={(e) => e.stopPropagation()}
+        className="flex w-[230px] shrink-0 flex-col gap-0.5 px-3 py-10 pl-8"
+        style={{ background: 'rgba(10,8,16,0.6)', borderRight: '1px solid rgba(180,160,240,0.1)' }}
       >
-        <h2 className="heading-glow mb-4 text-lg font-semibold tracking-[0.15em]">my profile</h2>
+        <p className="section-label mb-2 px-3">настройки</p>
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className="flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-left text-sm transition"
+            style={
+              tab === t.id
+                ? { background: 'rgba(125,111,196,0.2)', color: '#e2d8fa' }
+                : { color: '#6d6680' }
+            }
+          >
+            {t.id === 'profile' && <UsersIcon size={16} />}
+            {t.id === 'voice' && <MicIcon size={16} />}
+            {t.id === 'about' && <SettingsIcon size={16} />}
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-        {/* banner preview */}
-        <div
-          className="relative mb-4 h-24 overflow-hidden rounded-glass"
-          style={
-            resolveAssetUrl(bannerUrl)
-              ? undefined
-              : { background: 'linear-gradient(120deg, rgba(125,111,196,0.5), rgba(212,83,126,0.5))' }
-          }
+      {/* ── content ──────────────────────────────────────────────────── */}
+      <div className="relative min-w-0 flex-1 overflow-y-auto px-10 py-10">
+        <button
+          onClick={close}
+          className="absolute right-8 top-8 grid h-9 w-9 place-items-center rounded-full text-text-muted transition hover:text-text-primary"
+          style={{ border: '1px solid rgba(180,160,240,0.25)' }}
+          aria-label="закрыть (esc)"
+          title="закрыть (esc)"
         >
-          {resolveAssetUrl(bannerUrl) && (
-            <img src={resolveAssetUrl(bannerUrl)!} alt="" className="h-full w-full object-cover" />
-          )}
-          <div className="absolute right-2 top-2 flex gap-1.5">
-            <button
-              type="button"
-              onClick={() => bannerInput.current?.click()}
-              disabled={bannerUploading}
-              className="rounded-glass px-2.5 py-1 text-[11px] text-white backdrop-blur-sm transition hover:brightness-125"
-              style={{ background: 'rgba(0,0,0,0.45)' }}
-            >
-              {bannerUploading ? 'uploading…' : 'change banner'}
-            </button>
-            {bannerUrl && (
-              <button
-                type="button"
-                onClick={() => setBannerUrl('')}
-                className="rounded-glass px-2.5 py-1 text-[11px] text-white backdrop-blur-sm transition hover:text-accent-pink"
-                style={{ background: 'rgba(0,0,0,0.45)' }}
-              >
-                remove
-              </button>
-            )}
-          </div>
-          <input
-            ref={bannerInput}
-            type="file"
-            accept="image/png,image/jpeg,image/gif,image/webp"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) uploadBannerFile(f);
-              e.target.value = '';
-            }}
-          />
-        </div>
+          <CloseIcon size={16} />
+        </button>
 
-        {/* avatar + uploads */}
-        <div className="mb-4 flex items-center gap-4">
-          <Avatar username={user.username} avatarUrl={avatarUrl || null} size={64} />
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => fileInput.current?.click()}
-                disabled={uploading}
-                className="rounded-glass px-3 py-1.5 text-xs text-text-primary transition hover:text-accent-violet"
-                style={{ background: 'rgba(125,111,196,0.12)', border: '1px solid rgba(180,160,240,0.14)' }}
+        <div className="max-w-[640px]">
+          {tab === 'profile' && (
+            <>
+              <h2 className="heading-glow mb-6 text-xl font-semibold tracking-[0.12em]">
+                мой профиль
+              </h2>
+
+              {/* live profile preview card */}
+              <div
+                className="mb-7 overflow-hidden rounded-[18px]"
+                style={{ border: '1px solid rgba(180,160,240,0.16)' }}
               >
-                {uploading ? 'uploading…' : 'upload avatar'}
-              </button>
-              {avatarUrl && (
                 <button
-                  type="button"
-                  onClick={() => setAvatarUrl('')}
-                  className="text-xs text-text-muted transition hover:text-accent-pink"
+                  onClick={() => bannerInput.current?.click()}
+                  disabled={bannerUploading}
+                  className="group/banner relative block h-28 w-full overflow-hidden"
+                  style={
+                    banner
+                      ? undefined
+                      : { background: 'linear-gradient(120deg,#5d3a8c,#8c2f55)' }
+                  }
+                  title="сменить баннер"
                 >
-                  remove
+                  {banner && <img src={banner} alt="" className="h-full w-full object-cover" />}
+                  <span
+                    className="absolute inset-0 grid place-items-center text-xs font-semibold text-text-heading opacity-0 transition group-hover/banner:opacity-100"
+                    style={{ background: 'rgba(5,4,9,0.55)' }}
+                  >
+                    {bannerUploading ? 'загрузка…' : 'сменить баннер'}
+                  </span>
                 </button>
-              )}
-            </div>
-            <input
-              ref={fileInput}
-              type="file"
-              accept="image/png,image/jpeg,image/gif,image/webp"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) uploadFile(f);
-                e.target.value = '';
-              }}
-            />
-          </div>
-        </div>
+                <div className="flex items-end gap-4 px-5 pb-4" style={{ background: 'rgba(10,8,16,0.8)' }}>
+                  <button
+                    onClick={() => fileInput.current?.click()}
+                    disabled={uploading}
+                    className="group/ava relative -mt-9"
+                    title="сменить аватар"
+                  >
+                    <div
+                      className="rounded-full p-1"
+                      style={{ background: '#0a0810', boxShadow: '0 0 0 2px rgba(125,111,196,0.7)' }}
+                    >
+                      <Avatar username={displayName || user.username} avatarUrl={user.avatarUrl} size={72} />
+                    </div>
+                    <span
+                      className="absolute inset-1 grid place-items-center rounded-full text-[10px] font-semibold text-text-heading opacity-0 transition group-hover/ava:opacity-100"
+                      style={{ background: 'rgba(5,4,9,0.6)' }}
+                    >
+                      {uploading ? '…' : 'сменить'}
+                    </span>
+                  </button>
+                  <div className="min-w-0 py-3">
+                    <p className="truncate text-lg font-semibold text-text-heading">
+                      {displayName.trim() || user.username}
+                    </p>
+                    <p className="truncate text-xs text-text-muted">
+                      @{user.username}
+                      {user.uid != null && <span className="ml-2">uid {user.uid}</span>}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-        {/* display name */}
-        <label className="section-label mb-1 block">display name</label>
-        <input
-          className="glass-input mb-1"
-          value={displayName}
-          maxLength={32}
-          placeholder={user.username}
-          onChange={(e) => setDisplayName(e.target.value)}
-        />
-        <p className="mb-4 text-[11px] text-text-muted">
-          shown to others · @{user.username}
-          {user.uid ? ` · UID #${user.uid}` : ''}
-        </p>
+              <input
+                ref={fileInput}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) uploadAvatarFile(f);
+                  e.target.value = '';
+                }}
+              />
+              <input
+                ref={bannerInput}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) uploadBannerFile(f);
+                  e.target.value = '';
+                }}
+              />
 
-        <label className="section-label mb-2 block">status</label>
-        <div className="mb-5 flex gap-2">
-          {STATUSES.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => setStatus(s.value)}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-glass px-2 py-2 text-sm transition ${
-                status === s.value
-                  ? 'text-text-heading'
-                  : 'text-text-muted hover:text-text-primary'
-              }`}
-              style={
-                status === s.value
-                  ? { background: 'rgba(125,111,196,0.22)', boxShadow: 'inset 0 0 14px rgba(125,111,196,0.18)' }
-                  : { background: 'rgba(125,111,196,0.06)' }
-              }
-            >
-              <span className={`status-dot ${s.dot}`} />
-              {s.label}
-            </button>
-          ))}
-        </div>
+              <label className="section-label mb-1.5 block">отображаемое имя</label>
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder={user.username}
+                maxLength={32}
+                className="glass-input mb-5"
+                style={inputStyle}
+              />
 
-        <p className="section-label mb-2">voice &amp; video</p>
-        <div className="mb-5 space-y-2">
-          <label className="block">
-            <span className="mb-1 block text-[11px] text-text-muted">microphone</span>
-            <select
-              className="glass-input"
-              value={inputDeviceId ?? ''}
-              onChange={(e) => voice.setInputDevice(e.target.value || null)}
-            >
-              <option value="">default microphone</option>
-              {devices.inputs.map((d, i) => (
-                <option key={d.deviceId} value={d.deviceId}>
-                  {d.label || `microphone ${i + 1}`}
-                </option>
+              <label className="section-label mb-1.5 block">обо мне</label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="пара слов о себе… (видно в профиле)"
+                maxLength={300}
+                rows={3}
+                className="glass-input mb-1 w-full resize-none"
+                style={inputStyle}
+              />
+              <p className="mb-5 text-right text-[10px] text-text-muted">{bio.length}/300</p>
+
+              <label className="section-label mb-2 block">статус</label>
+              <div className="mb-7 flex gap-2">
+                {STATUSES.map((s) => (
+                  <button
+                    key={s.value}
+                    onClick={() => setStatus(s.value)}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-[10px] px-2 py-2.5 text-sm transition"
+                    style={
+                      status === s.value
+                        ? {
+                            background: 'rgba(125,111,196,0.22)',
+                            color: '#e2d8fa',
+                            border: '1px solid rgba(125,111,196,0.55)',
+                          }
+                        : {
+                            background: 'rgba(5,4,9,0.5)',
+                            color: '#6d6680',
+                            border: '1px solid rgba(180,160,240,0.12)',
+                          }
+                    }
+                  >
+                    <span className={`status-dot ${s.dot}`} />
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
+              {error && <p className="mb-4 text-sm text-accent-pink">{error}</p>}
+
+              <button onClick={save} disabled={busy} className="btn-accent px-8">
+                {busy ? '…' : 'сохранить'}
+              </button>
+            </>
+          )}
+
+          {tab === 'voice' && (
+            <>
+              <h2 className="heading-glow mb-6 text-xl font-semibold tracking-[0.12em]">
+                голос и видео
+              </h2>
+              {(
+                [
+                  { label: 'микрофон', list: devices.inputs, value: inputDeviceId, set: voice.setInputDevice },
+                  { label: 'динамики', list: devices.outputs, value: outputDeviceId, set: voice.setOutputDevice },
+                  { label: 'камера', list: devices.cameras, value: cameraDeviceId, set: voice.setCameraDevice },
+                ] as const
+              ).map((d) => (
+                <div key={d.label} className="mb-5">
+                  <label className="section-label mb-1.5 block">{d.label}</label>
+                  <select
+                    value={d.value ?? ''}
+                    onChange={(e) => d.set(e.target.value || null)}
+                    className="glass-input w-full"
+                    style={inputStyle}
+                  >
+                    <option value="">по умолчанию</option>
+                    {d.list.map((dev, i) => (
+                      <option key={dev.deviceId} value={dev.deviceId}>
+                        {dev.label || `${d.label} ${i + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               ))}
-            </select>
-          </label>
+              <p className="text-xs text-text-muted">
+                изменения применяются сразу — даже посреди звонка.
+              </p>
+            </>
+          )}
 
-          <label className="block">
-            <span className="mb-1 block text-[11px] text-text-muted">speakers</span>
-            <select
-              className="glass-input"
-              value={outputDeviceId ?? ''}
-              onChange={(e) => voice.setOutputDevice(e.target.value || null)}
-            >
-              <option value="">default speakers</option>
-              {devices.outputs.map((d, i) => (
-                <option key={d.deviceId} value={d.deviceId}>
-                  {d.label || `speakers ${i + 1}`}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-[11px] text-text-muted">camera</span>
-            <select
-              className="glass-input"
-              value={cameraDeviceId ?? ''}
-              onChange={(e) => voice.setCameraDevice(e.target.value || null)}
-            >
-              <option value="">default camera</option>
-              {devices.cameras.map((d, i) => (
-                <option key={d.deviceId} value={d.deviceId}>
-                  {d.label || `camera ${i + 1}`}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        {error && <p className="mb-3 text-sm text-accent-pink">{error}</p>}
-
-        <div className="flex justify-end gap-2">
-          <button onClick={close} className="rounded-glass px-4 py-2 text-text-muted hover:text-text-primary">
-            cancel
-          </button>
-          <button onClick={save} disabled={busy} className="btn-accent">
-            {busy ? '…' : 'save'}
-          </button>
+          {tab === 'about' && (
+            <>
+              <h2 className="heading-glow mb-6 text-xl font-semibold tracking-[0.12em]">
+                о приложении
+              </h2>
+              <div
+                className="space-y-3 rounded-[14px] p-5"
+                style={{ background: 'rgba(10,8,16,0.7)', border: '1px solid rgba(180,160,240,0.14)' }}
+              >
+                <Row k="версия" v={version ? `v${version}` : '…'} />
+                <Row k="сервер" v={getServerUrl()} mono />
+                <Row k="аккаунт" v={`@${user.username}${user.uid != null ? ` · uid ${user.uid}` : ''}`} />
+              </div>
+              <p className="mt-4 text-xs text-text-muted">
+                sephraxia — self-hosted мессенджер для своих. обновления прилетают сами с github
+                releases.
+              </p>
+            </>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function Row({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <span className="section-label shrink-0">{k}</span>
+      <span
+        className="truncate text-sm text-text-primary"
+        style={mono ? { fontFamily: 'Consolas, monospace', textTransform: 'none' } : undefined}
+      >
+        {v}
+      </span>
     </div>
   );
 }

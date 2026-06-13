@@ -10,6 +10,7 @@ const dmInclude = {
   replyTo: {
     select: { id: true, content: true, fromId: true, from: { select: { username: true } } },
   },
+  reactions: { select: { emoji: true, userId: true }, orderBy: { createdAt: 'asc' as const } },
 } as const;
 
 export async function dmRoutes(app: FastifyInstance) {

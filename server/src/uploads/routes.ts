@@ -13,6 +13,7 @@ import { UPLOAD_DIR } from '../users/routes';
 const ALLOWED_EXT = new Set([
   '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.avif', // images
   '.pdf', '.txt', '.md', '.csv', '.json', '.log', // docs
+  '.lua', '.cfg', '.ini', // game scripts & configs (neverlose / gamesense)
   '.zip', '.rar', '.7z', '.tar', '.gz', // archives
   '.mp3', '.wav', '.ogg', '.mp4', '.webm', '.mov', // media
 ]);

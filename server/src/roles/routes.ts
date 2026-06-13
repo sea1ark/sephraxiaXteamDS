@@ -12,9 +12,13 @@ const roleSchema = z.object({
   name: z.string().min(1).max(32),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'color must be a hex like #7d6fc4'),
   symbol: z.string().max(4).default(''),
+  position: z.number().int().min(0).max(9999).optional(),
   canManageChannels: z.boolean().optional(),
   canDeleteMessages: z.boolean().optional(),
   canManageRoles: z.boolean().optional(),
+  canKick: z.boolean().optional(),
+  canBan: z.boolean().optional(),
+  canTimeout: z.boolean().optional(),
 });
 
 export async function roleRoutes(app: FastifyInstance) {
@@ -48,6 +52,9 @@ export async function roleRoutes(app: FastifyInstance) {
         canManageChannels: parsed.data.canManageChannels ?? false,
         canDeleteMessages: parsed.data.canDeleteMessages ?? false,
         canManageRoles: parsed.data.canManageRoles ?? false,
+        canKick: parsed.data.canKick ?? false,
+        canBan: parsed.data.canBan ?? false,
+        canTimeout: parsed.data.canTimeout ?? false,
       },
     });
     broadcastRolesChanged();

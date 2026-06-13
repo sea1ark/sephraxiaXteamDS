@@ -19,6 +19,7 @@ model User {
   passwordHash String
   avatarUrl    String?
   bannerUrl    String? // profile banner image (png/jpg/gif)
+  bio          String? // short "about me" shown on the profile card
   status       String   @default("offline") // online | idle | dnd | offline
   isOwner      Boolean  @default(false) // bypasses all permission checks
   createdAt    DateTime @default(now())
@@ -35,6 +36,39 @@ model User {
 
   sentFriendRequests     Friendship[] @relation("SentFriendRequests")
   receivedFriendRequests Friendship[] @relation("ReceivedFriendRequests")
+
+  ownedServers      Server[]       @relation("OwnedServers")
+  serverMemberships ServerMember[]
+}
+
+// A community ("guild"): owns channels and has explicit members. The original
+// single community becomes the seeded "home" server (see ensureHomeServer).
+model Server {
+  id         String   @id @default(cuid())
+  name       String
+  icon       String? // short emoji/symbol shown in the rail
+  inviteCode String   @unique @default(cuid())
+  createdAt  DateTime @default(now())
+
+  ownerId String
+  owner   User   @relation("OwnedServers", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  members  ServerMember[]
+  channels Channel[]
+}
+
+model ServerMember {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  serverId String
+  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, userId])
+  @@index([userId])
 }
 
 model Channel {
@@ -44,7 +78,13 @@ model Channel {
   type     String  @default("text") // text | voice
   position Int     @default(0)
 
+  // Nullable only for migration safety; backfilled to the home server at boot.
+  serverId String?
+  server   Server? @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
   messages Message[]
+
+  @@index([serverId, position])
 }
 
 model Message {
@@ -104,7 +144,23 @@ model DirectMessage {
   replyTo   DirectMessage?  @relation("DmReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   DirectMessage[] @relation("DmReplies")
 
+  reactions DmReaction[]
+
   @@index([fromId, toId, createdAt])
+}
+
+// One emoji reaction by one user on one direct message.
+model DmReaction {
+  id        String   @id @default(cuid())
+  emoji     String
+  createdAt DateTime @default(now())
+
+  userId String
+  dmId   String
+  dm     DirectMessage @relation(fields: [dmId], references: [id], onDelete: Cascade)
+
+  @@unique([dmId, userId, emoji])
+  @@index([dmId])
 }
 
 model Role {

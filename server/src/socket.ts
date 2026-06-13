@@ -29,6 +29,7 @@ const authorInclude = {
 const dmInclude = {
   from: { include: { roles: true } },
   replyTo: { select: { id: true, content: true, fromId: true, from: { select: { username: true } } } },
+  reactions: { select: { emoji: true, userId: true }, orderBy: { createdAt: 'asc' } },
 } as const;
 
 // Accept only attachments uploaded to our own server, with sane shapes/limits.
@@ -249,6 +250,41 @@ export function setupSocket(httpServer: HttpServer): SephraxiaServer {
           include: authorInclude,
         });
         if (updated) io.emit('message:update', toMessage(updated));
+      }),
+    );
+
+    // Toggle an emoji reaction on a direct message — only the two participants
+    // may react; the updated DM goes to both their rooms as dm:update.
+    socket.on(
+      'dm:reaction:toggle',
+      guard(async ({ dmId, emoji }) => {
+        const clean = emoji?.trim().slice(0, 16);
+        if (!dmId || !clean) return;
+        const dm = await prisma.directMessage.findUnique({ where: { id: dmId } });
+        if (!dm || (dm.fromId !== userId && dm.toId !== userId)) return;
+
+        const existing = await prisma.dmReaction.findUnique({
+          where: { dmId_userId_emoji: { dmId, userId, emoji: clean } },
+        });
+        if (existing) {
+          await prisma.dmReaction.delete({ where: { id: existing.id } });
+        } else {
+          const distinct = await prisma.dmReaction.findMany({
+            where: { dmId },
+            select: { emoji: true },
+            distinct: ['emoji'],
+          });
+          if (distinct.length >= 20 && !distinct.some((d) => d.emoji === clean)) return;
+          await prisma.dmReaction.create({ data: { dmId, userId, emoji: clean } });
+        }
+
+        const updated = await prisma.directMessage.findUnique({
+          where: { id: dmId },
+          include: dmInclude,
+        });
+        if (updated) {
+          io.to(userRoom(dm.fromId)).to(userRoom(dm.toId)).emit('dm:update', toDm(updated));
+        }
       }),
     );
 
@@ -542,6 +578,11 @@ export function getOnlineUserIds(): string[] {
 /** Broadcast a profile/status change to every connected client. */
 export function broadcastUserUpdate(user: PublicUser): void {
   ioRef?.emit('user:update', user);
+}
+
+/** Tell every client to refetch the server list / memberships. */
+export function broadcastServersChanged(): void {
+  ioRef?.emit('servers:changed');
 }
 
 /** Tell every client to refetch the role list / member roles. */

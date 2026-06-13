@@ -31,6 +31,7 @@ export function Layout() {
   const activeDmUserId = useUiStore((s) => s.activeDmUserId);
 
   const {
+    setServers,
     setChannels,
     setUsers,
     setUserStatus,
@@ -112,6 +113,11 @@ export function Layout() {
     socket.on('channels:changed', () => {
       api.getChannels().then(setChannels).catch(() => {});
     });
+    socket.on('servers:changed', () => {
+      // Memberships affect both the rail and which channels we can see.
+      api.getServers().then(setServers).catch(() => {});
+      api.getChannels().then(setChannels).catch(() => {});
+    });
     socket.on('friends:changed', () => {
       api.getFriends().then(setFriends).catch(() => {});
     });
@@ -181,7 +187,8 @@ export function Layout() {
 
     (async () => {
       try {
-        const [channels, users, roles, perms, dms, friends] = await Promise.all([
+        const [servers, channels, users, roles, perms, dms, friends] = await Promise.all([
+          api.getServers(),
           api.getChannels(),
           api.getUsers(),
           api.getRoles(),
@@ -189,6 +196,7 @@ export function Layout() {
           api.getDmConversations(),
           api.getFriends(),
         ]);
+        setServers(servers);
         setChannels(channels);
         setUsers(users);
         setRoles(roles);

@@ -132,12 +132,21 @@ export function MemberContextMenu() {
             <Item label="view profile" onClick={() => { openProfile(target.id); }} />
             {!isSelf && <Item label="message" onClick={() => openDm(target.id)} />}
             <Item
-              label="copy user id"
+              label={`copy @${target.username}`}
               onClick={() => {
-                navigator.clipboard?.writeText(target.id).catch(() => {});
+                navigator.clipboard?.writeText(`@${target.username}`).catch(() => {});
                 close();
               }}
             />
+            {target.uid != null && (
+              <Item
+                label={`copy uid (${target.uid})`}
+                onClick={() => {
+                  navigator.clipboard?.writeText(String(target.uid)).catch(() => {});
+                  close();
+                }}
+              />
+            )}
 
             {perms?.canManageRoles && (
               <Item label="assign roles" arrow onClick={() => setSub('roles')} />

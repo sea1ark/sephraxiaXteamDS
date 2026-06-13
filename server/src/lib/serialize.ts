@@ -62,6 +62,7 @@ interface DbUser {
   displayName?: string | null;
   avatarUrl: string | null;
   bannerUrl?: string | null;
+  bio?: string | null;
   status: string;
   isOwner: boolean;
   createdAt: Date;
@@ -96,6 +97,7 @@ export function toPublicUser(u: DbUser): PublicUser {
     displayName: u.displayName ?? null,
     avatarUrl: u.avatarUrl,
     bannerUrl: u.bannerUrl ?? null,
+    bio: u.bio ?? null,
     status: u.status as PublicUser['status'],
     isOwner: u.isOwner,
     createdAt: u.createdAt.toISOString(),
@@ -166,6 +168,7 @@ export function toDm(m: {
   editedAt?: Date | null;
   replyToId?: string | null;
   replyTo?: DbReplyTarget | null;
+  reactions?: { emoji: string; userId: string }[];
   from?: DbUser;
 }): DirectMessage {
   return {
@@ -175,6 +178,7 @@ export function toDm(m: {
     toId: m.toId,
     createdAt: m.createdAt.toISOString(),
     editedAt: m.editedAt ? m.editedAt.toISOString() : null,
+    reactions: groupReactions(m.reactions),
     attachments: parseAttachments(m.attachments),
     replyToId: m.replyToId ?? null,
     replyTo: toReplyPreview(m.replyTo),

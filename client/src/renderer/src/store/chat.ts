@@ -9,9 +9,12 @@ import type {
   Message,
   PublicUser,
   Role,
+  ServerInfo,
 } from '@sephraxia/shared';
 
 interface ChatState {
+  servers: ServerInfo[];
+  activeServerId: string | null;
   channels: Channel[];
   activeChannelId: string | null;
   messagesByChannel: Record<string, Message[]>;
@@ -28,6 +31,8 @@ interface ChatState {
   // Friends
   friends: FriendsData | null;
 
+  setServers: (servers: ServerInfo[]) => void;
+  setActiveServer: (id: string) => void;
   setChannels: (channels: Channel[]) => void;
   setActiveChannel: (id: string | null) => void;
   setMessages: (channelId: string, messages: Message[]) => void;
@@ -52,7 +57,15 @@ interface ChatState {
   setFriends: (friends: FriendsData) => void;
 }
 
+/** Pick a default channel for a server: first text channel, else first any. */
+function defaultChannelId(channels: Channel[], serverId: string | null): string | null {
+  const scoped = serverId ? channels.filter((c) => c.serverId === serverId) : channels;
+  return (scoped.find((c) => c.type !== 'voice') ?? scoped[0])?.id ?? null;
+}
+
 export const useChatStore = create<ChatState>((set) => ({
+  servers: [],
+  activeServerId: null,
   channels: [],
   activeChannelId: null,
   messagesByChannel: {},
@@ -64,12 +77,37 @@ export const useChatStore = create<ChatState>((set) => ({
   dmUnread: {},
   friends: null,
 
-  setChannels: (channels) =>
+  setServers: (servers) =>
     set((s) => ({
-      channels,
-      activeChannelId: s.activeChannelId ?? channels[0]?.id ?? null,
+      servers,
+      // Keep the current selection if it still exists; default to home (first).
+      activeServerId: servers.some((x) => x.id === s.activeServerId)
+        ? s.activeServerId
+        : servers[0]?.id ?? null,
     })),
-  setActiveChannel: (id) => set({ activeChannelId: id }),
+  setActiveServer: (id) =>
+    set((s) => {
+      if (s.activeServerId === id) return s;
+      return { activeServerId: id, activeChannelId: defaultChannelId(s.channels, id) };
+    }),
+  setChannels: (channels) =>
+    set((s) => {
+      const active = channels.some((c) => c.id === s.activeChannelId) ? s.activeChannelId : null;
+      return {
+        channels,
+        activeChannelId: active ?? defaultChannelId(channels, s.activeServerId),
+      };
+    }),
+  // Selecting a channel also follows it to its server, so cross-server jumps
+  // (quick switcher / search) land on the right rail entry.
+  setActiveChannel: (id) =>
+    set((s) => {
+      const target = id ? s.channels.find((c) => c.id === id) : undefined;
+      return {
+        activeChannelId: id,
+        activeServerId: target?.serverId ?? s.activeServerId,
+      };
+    }),
   setMessages: (channelId, messages) =>
     set((s) => ({ messagesByChannel: { ...s.messagesByChannel, [channelId]: messages } })),
   addMessage: (message) =>

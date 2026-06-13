@@ -16,9 +16,17 @@ const STATUS_CLASS: Record<string, string> = {
 export function UserList() {
   const users = useChatStore((s) => s.users);
   const roles = useChatStore((s) => s.roles);
+  const servers = useChatStore((s) => s.servers);
+  const activeServerId = useChatStore((s) => s.activeServerId);
 
-  const online = users.filter((u) => u.status !== 'offline');
-  const offline = users.filter((u) => u.status === 'offline');
+  // Only members of the active server; before servers load, show everyone.
+  const activeServer = servers.find((s) => s.id === activeServerId);
+  const members = activeServer
+    ? users.filter((u) => activeServer.memberIds.includes(u.id))
+    : users;
+
+  const online = members.filter((u) => u.status !== 'offline');
+  const offline = members.filter((u) => u.status === 'offline');
 
   // Bucket online members under their top role; misc bucket for no role.
   const sections: { key: string; label: string; color?: string; members: PublicUser[] }[] = [];
@@ -51,7 +59,7 @@ export function UserList() {
         {offline.length > 0 && (
           <Section label={`не в сети — ${offline.length}`} users={sortMembers(offline)} dim />
         )}
-        {users.length === 0 && (
+        {members.length === 0 && (
           <p className="px-2 text-xs text-text-muted">никого нет…</p>
         )}
       </div>

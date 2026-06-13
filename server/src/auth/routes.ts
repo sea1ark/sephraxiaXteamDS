@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { AuthResponse, PublicUser } from '@sephraxia/shared';
 import { prisma } from '../prisma';
 import { toPublicUser } from '../lib/serialize';
+import { joinHomeServer } from '../servers/routes';
 import {
   signAccessToken,
   signRefreshToken,
@@ -41,6 +42,8 @@ export async function authRoutes(app: FastifyInstance) {
     const user = await prisma.user.create({
       data: { username, passwordHash, status: 'online', isOwner: isFirstUser, uid: maxUid + 1 },
     });
+
+    await joinHomeServer(user.id);
 
     return reply.code(201).send(buildAuthResponse(toPublicUser(user)));
   });

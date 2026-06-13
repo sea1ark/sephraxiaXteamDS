@@ -1,6 +1,7 @@
 // Compact curated emoji picker used for reactions and the composer.
 // Anchored popover; closes on outside click / Esc.
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 const CATEGORIES: { label: string; emojis: string[] }[] = [
   {
@@ -43,6 +44,9 @@ interface Props {
 
 export function EmojiPicker({ onPick, onClose, x, y, up }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  // Rendered through a portal: ancestors with backdrop-filter (.glass panels)
+  // create containing blocks that trap position:fixed children underneath
+  // sibling panels (e.g. the member list). The portal escapes all of that.
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -67,7 +71,7 @@ export function EmojiPicker({ onPick, onClose, x, y, up }: Props) {
     ? Math.max(8, y - height - 8)
     : Math.min(y + 8, window.innerHeight - height - 8);
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       className="sx-menu fixed z-[80] flex flex-col overflow-hidden rounded-[14px]"
@@ -111,6 +115,7 @@ export function EmojiPicker({ onPick, onClose, x, y, up }: Props) {
           </div>
         ))}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -27,6 +27,7 @@ const updateProfileSchema = z.object({
   avatarUrl: imageUrl.nullish(),
   bannerUrl: imageUrl.nullish(),
   displayName: z.string().trim().max(32).nullish(), // empty clears → falls back to username
+  bio: z.string().trim().max(300).nullish(), // empty clears
   status: z.enum(['online', 'idle', 'dnd']).optional(),
 });
 
@@ -57,6 +58,7 @@ export async function userRoutes(app: FastifyInstance) {
       avatarUrl?: string | null;
       bannerUrl?: string | null;
       displayName?: string | null;
+      bio?: string | null;
       status?: string;
     } = {};
     if (parsed.data.avatarUrl !== undefined) {
@@ -67,6 +69,9 @@ export async function userRoutes(app: FastifyInstance) {
     }
     if (parsed.data.displayName !== undefined) {
       data.displayName = parsed.data.displayName ? parsed.data.displayName : null;
+    }
+    if (parsed.data.bio !== undefined) {
+      data.bio = parsed.data.bio ? parsed.data.bio : null;
     }
     if (parsed.data.status !== undefined) data.status = parsed.data.status;
 

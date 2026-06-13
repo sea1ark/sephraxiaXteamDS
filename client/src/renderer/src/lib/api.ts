@@ -13,6 +13,7 @@ import type {
   Message,
   PublicUser,
   Role,
+  ServerInfo,
   UpdateProfilePayload,
 } from '@sephraxia/shared';
 import { SERVER_URL } from './config';
@@ -81,10 +82,29 @@ export const api = {
       body: JSON.stringify({ username, password }),
     }),
 
-  getChannels: () => request<Channel[]>('/channels'),
+  getChannels: (serverId?: string) =>
+    request<Channel[]>(`/channels${serverId ? `?serverId=${encodeURIComponent(serverId)}` : ''}`),
 
-  createChannel: (name: string, type: 'text' | 'voice' = 'text') =>
-    request<Channel>('/channels', { method: 'POST', body: JSON.stringify({ name, type }) }),
+  // --- Servers (guilds) ---
+  getServers: () => request<ServerInfo[]>('/servers'),
+  createServer: (name: string, icon?: string) =>
+    request<ServerInfo>('/servers', { method: 'POST', body: JSON.stringify({ name, icon }) }),
+  joinServer: (code: string) =>
+    request<ServerInfo>('/servers/join', { method: 'POST', body: JSON.stringify({ code }) }),
+  addServerMember: (serverId: string, userId: string) =>
+    request<{ ok: boolean }>(`/servers/${serverId}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
+  leaveServer: (serverId: string) =>
+    request<{ ok: boolean }>(`/servers/${serverId}/leave`, { method: 'POST' }),
+  deleteServer: (serverId: string) => request<void>(`/servers/${serverId}`, { method: 'DELETE' }),
+
+  createChannel: (name: string, type: 'text' | 'voice' = 'text', serverId?: string) =>
+    request<Channel>('/channels', {
+      method: 'POST',
+      body: JSON.stringify({ name, type, serverId }),
+    }),
 
   updateChannel: (id: string, data: { name?: string; topic?: string | null }) =>
     request<Channel>(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),

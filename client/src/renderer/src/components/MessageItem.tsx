@@ -7,6 +7,7 @@ import { nameColor, roleSymbol, displayName } from '../lib/roles';
 import { Avatar } from './Avatar';
 import { MessageAttachments } from './MessageAttachments';
 import { ReplyPreviewLine } from './ReplyPreviewLine';
+import { MessageContent } from './MessageContent';
 import { EmojiPicker } from './EmojiPicker';
 import { SmileIcon, ReplyIcon, EditIcon, TrashIcon, PinIcon } from './icons';
 
@@ -191,13 +192,9 @@ export function MessageItem({ message, author, grouped, highlight }: Props) {
             </div>
           ) : (
             <>
-              {message.content && (
-                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-primary">
-                  {message.content}
-                  {grouped && message.editedAt && (
-                    <span className="ml-1 text-[10px] text-text-muted">(изменено)</span>
-                  )}
-                </p>
+              {message.content && <MessageContent content={message.content} />}
+              {grouped && message.editedAt && (
+                <span className="text-[10px] text-text-muted">(изменено)</span>
               )}
               {message.attachments && message.attachments.length > 0 && (
                 <MessageAttachments attachments={message.attachments} />

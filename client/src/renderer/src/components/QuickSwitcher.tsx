@@ -23,6 +23,7 @@ export function QuickSwitcher() {
   const showServer = useUiStore((s) => s.showServer);
   const openDm = useUiStore((s) => s.openDm);
   const channels = useChatStore((s) => s.channels);
+  const servers = useChatStore((s) => s.servers);
   const setActiveChannel = useChatStore((s) => s.setActiveChannel);
   const users = useChatStore((s) => s.users);
   const myId = useAuthStore((s) => s.user?.id);
@@ -48,7 +49,11 @@ export function QuickSwitcher() {
         key: `c:${c.id}`,
         kind: 'channel' as const,
         label: c.name,
-        sub: c.topic ?? undefined,
+        // With several servers, where the channel lives matters more than its topic.
+        sub:
+          servers.length > 1
+            ? servers.find((s) => s.id === c.serverId)?.name ?? c.topic ?? undefined
+            : c.topic ?? undefined,
         action: () => {
           showServer();
           setActiveChannel(c.id);
@@ -72,7 +77,7 @@ export function QuickSwitcher() {
         action: () => openDm(u.id),
       }));
     return [...chans, ...people].slice(0, 12);
-  }, [open, query, channels, users, myId, showServer, setActiveChannel, openDm]);
+  }, [open, query, channels, servers, users, myId, showServer, setActiveChannel, openDm]);
 
   useEffect(() => {
     setIndex((i) => Math.min(i, Math.max(0, items.length - 1)));

@@ -4,6 +4,7 @@
 import type { Attachment } from '@sephraxia/shared';
 import { useUiStore, type MediaKind } from '../store/ui';
 import { resolveAssetUrl } from '../lib/config';
+import { SnippetCard, isSnippet } from './SnippetCard';
 
 function mediaKind(type: string): MediaKind | null {
   if (type.startsWith('image/')) return 'image';
@@ -87,6 +88,11 @@ export function MessageAttachments({ attachments }: { attachments: Attachment[] 
               <audio src={src} controls preload="metadata" className="w-full" />
             </div>
           );
+        }
+
+        // Shareable code/config files render as an expandable snippet card.
+        if (isSnippet(a)) {
+          return <SnippetCard key={a.url} attachment={a} src={src} />;
         }
 
         // Non-media: a download chip (opens in the browser / downloads).

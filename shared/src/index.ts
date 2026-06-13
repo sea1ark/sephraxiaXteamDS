@@ -12,6 +12,7 @@ export interface User {
   displayName: string | null; // chosen display name; falls back to username
   avatarUrl: string | null;
   bannerUrl: string | null; // profile banner image (png/jpg/gif)
+  bio: string | null; // short "about me" on the profile card
   status: UserStatus;
   isOwner: boolean;
   createdAt: string; // ISO string over the wire
@@ -30,6 +31,25 @@ export interface Channel {
   topic: string | null; // short description shown in the chat header
   type: ChannelType;
   position: number;
+  serverId: string | null; // owning server (null only during migration)
+}
+
+// ---------------------------------------------------------------------------
+// Servers (guilds)
+// ---------------------------------------------------------------------------
+
+export interface ServerInfo {
+  id: string;
+  name: string;
+  icon: string | null;
+  ownerId: string;
+  createdAt: string;
+  /** Invite code — only present for the server owner / platform admin. */
+  inviteCode?: string;
+  /** Member user ids, shadow-filtered (platform admin hidden unless explicit). */
+  memberIds: string[];
+  /** True when the requesting user is an explicit member. */
+  isMember: boolean;
 }
 
 /** One emoji's reactions on a message, grouped server-side. */
@@ -78,6 +98,7 @@ export interface DirectMessage {
   toId: string;
   createdAt: string;
   editedAt?: string | null;
+  reactions?: ReactionGroup[];
   attachments?: Attachment[];
   replyToId?: string | null;
   replyTo?: ReplyPreview | null;
@@ -111,6 +132,7 @@ export interface CreateRolePayload extends Partial<RolePermissions> {
   name: string;
   color: string;
   symbol: string;
+  position?: number; // hierarchy slot; higher = more senior
 }
 
 /** Effective permissions for a user (union of their roles; owner = all true). */
@@ -148,6 +170,7 @@ export interface UpdateProfilePayload {
   avatarUrl?: string | null;
   bannerUrl?: string | null;
   displayName?: string | null; // empty/null clears it (falls back to username)
+  bio?: string | null; // empty/null clears it
   status?: Exclude<UserStatus, 'offline'>; // can't manually set yourself offline
 }
 
@@ -182,6 +205,8 @@ export interface ClientToServerEvents {
   'message:delete': (payload: { messageId: string }) => void;
   // Toggle my reaction with this emoji on a channel message.
   'reaction:toggle': (payload: { messageId: string; emoji: string }) => void;
+  // Toggle my reaction on a direct message (rebroadcast as dm:update).
+  'dm:reaction:toggle': (payload: { dmId: string; emoji: string }) => void;
   // Pin or unpin a channel message (author or message moderators).
   'message:pin': (payload: { messageId: string; pinned: boolean }) => void;
   'dm:send': (payload: {
@@ -246,6 +271,8 @@ export interface ServerToClientEvents {
   'roles:changed': () => void;
   // Emitted when channels are created/renamed/deleted so clients can refresh.
   'channels:changed': () => void;
+  // Emitted when servers / memberships change so clients can refetch /servers.
+  'servers:changed': () => void;
   // Emitted to both parties when a friend request / friendship changes.
   'friends:changed': () => void;
   // Sent to a user who has just been kicked or banned (force logout).

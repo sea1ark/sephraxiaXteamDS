@@ -1,3 +1,5 @@
+// Profile card v3 — wide banner layout, copyable @username, bio, badge row,
+// info grid, role chips with inline assignment, and a moderation drawer.
 import { useEffect, useState } from 'react';
 import type { PublicUser } from '@sephraxia/shared';
 import { api, ApiError } from '../lib/api';
@@ -7,12 +9,14 @@ import { useAuthStore } from '../store/auth';
 import { resolveAssetUrl } from '../lib/config';
 import { Avatar } from './Avatar';
 import { nameColor, displayName } from '../lib/roles';
+import { toast } from '../store/toasts';
+import { ChatIcon, EditIcon, CloseIcon } from './icons';
 
 const STATUS_LABEL: Record<string, string> = {
-  online: 'online',
-  idle: 'idle',
-  dnd: 'do not disturb',
-  offline: 'offline',
+  online: 'в сети',
+  idle: 'отошёл',
+  dnd: 'не беспокоить',
+  offline: 'не в сети',
 };
 const STATUS_CLASS: Record<string, string> = {
   online: 'status-online',
@@ -61,11 +65,19 @@ export function ProfileModal() {
   const banner = resolveAssetUrl(u?.bannerUrl);
   const userRoleIds = new Set((u?.roles ?? []).map((r) => r.id));
   const sortedRoles = [...allRoles].sort((a, b) => b.position - a.position);
-  const showRoles = canManageRoles || (u?.roles?.length ?? 0) > 0;
   const mutedUntil = u?.mutedUntil ? new Date(u.mutedUntil) : null;
   const isMuted = !!mutedUntil && mutedUntil.getTime() > Date.now();
   const canModerate = !isMe && !u?.isOwner;
-  const showModeration = canModerate && (perms?.canTimeout || perms?.canKick || perms?.canBan || u?.banned);
+  const showModeration =
+    canModerate && (perms?.canTimeout || perms?.canKick || perms?.canBan || u?.banned);
+
+  function copyUsername() {
+    if (!u) return;
+    navigator.clipboard
+      ?.writeText(`@${u.username}`)
+      .then(() => toast(`@${u.username} скопирован`, 'success'))
+      .catch(() => {});
+  }
 
   async function toggleRole(roleId: string, on: boolean) {
     if (!u) return;
@@ -79,7 +91,7 @@ export function ProfileModal() {
       setUser(updated);
       upsertUser(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'could not update roles');
+      setError(err instanceof ApiError ? err.message : 'не получилось обновить роли');
     } finally {
       setSavingRole(null);
     }
@@ -95,7 +107,7 @@ export function ProfileModal() {
         upsertUser(updated);
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'action failed');
+      setError(err instanceof ApiError ? err.message : 'действие не удалось');
     }
   }
 
@@ -103,7 +115,7 @@ export function ProfileModal() {
     if (!u) return;
     const n = parseInt(uidDraft, 10);
     if (!Number.isFinite(n) || n < 1) {
-      setError('uid must be a positive number');
+      setError('uid — положительное число');
       return;
     }
     setError(null);
@@ -113,335 +125,360 @@ export function ProfileModal() {
       upsertUser(updated);
       setEditingUid(false);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'could not change uid');
+      setError(err instanceof ApiError ? err.message : 'не получилось сменить uid');
     }
   }
 
   return (
     <div
-      className="sx-overlay fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-md"
+      className="sx-overlay fixed inset-0 z-50 grid place-items-center bg-black/75 backdrop-blur-md"
       onClick={close}
       style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
     >
       <div
-        className="sx-pop w-[420px] overflow-hidden rounded-[22px]"
+        className="sx-pop max-h-[90vh] w-[540px] max-w-[94vw] overflow-y-auto rounded-[20px]"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'linear-gradient(180deg, rgba(22,17,33,0.98), rgba(8,6,14,0.99))',
-          border: '1px solid rgba(180,160,240,0.16)',
-          boxShadow: `0 36px 90px rgba(0,0,0,0.65), 0 0 0 1px ${accent}22, 0 0 60px ${accent}26`,
+          background: 'linear-gradient(180deg, #15101f 0%, #0a0812 100%)',
+          border: '1px solid rgba(180,160,240,0.18)',
+          boxShadow: `0 36px 90px rgba(0,0,0,0.7), 0 0 0 1px ${accent}1f, 0 0 70px ${accent}24`,
         }}
       >
-        {/* banner */}
+        {/* ── banner ─────────────────────────────────────────────────── */}
         <div
-          className="relative h-36 overflow-hidden"
+          className="relative h-44 overflow-hidden"
           style={
             banner
               ? undefined
               : {
-                  background: `radial-gradient(130% 170% at 18% 0%, ${accent}d0, ${accent}55 42%, transparent 78%), linear-gradient(120deg, ${accent}, #8c2f55)`,
+                  background: `radial-gradient(120% 160% at 20% 0%, ${accent}cc, ${accent}44 45%, transparent 80%), linear-gradient(120deg, ${accent}, #8c2f55)`,
                 }
           }
         >
           {banner && <img src={banner} alt="" className="h-full w-full object-cover" />}
-          {/* slow drifting sheen — pure transform, barely there */}
-          <div
-            className="pointer-events-none absolute -inset-1/4 opacity-50"
-            style={{
-              background: `radial-gradient(40% 40% at 50% 50%, ${banner ? 'rgba(255,255,255,0.12)' : `${accent}66`}, transparent 70%)`,
-              animation: 'sx-sheen 9s ease-in-out infinite',
-              willChange: 'transform',
-            }}
-          />
           <div
             className="absolute inset-0"
-            style={{ background: 'linear-gradient(180deg, transparent 38%, rgba(8,6,14,0.78))' }}
+            style={{ background: 'linear-gradient(180deg, transparent 45%, rgba(10,8,18,0.92))' }}
           />
+          <button
+            onClick={close}
+            className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full text-text-heading transition hover:scale-105"
+            style={{ background: 'rgba(5,4,9,0.55)', border: '1px solid rgba(255,255,255,0.15)' }}
+            aria-label="закрыть"
+          >
+            <CloseIcon size={15} />
+          </button>
         </div>
 
-        <div className="relative z-10 px-6 pb-6">
-          {/* avatar overlapping the banner */}
-          <div className="-mt-16 mb-3 flex items-end justify-between">
-            <div className="relative">
+        {/* ── header row: avatar + actions ───────────────────────────── */}
+        <div className="relative px-7">
+          <div className="-mt-14 flex items-end justify-between">
+            <div className="relative shrink-0">
               <div
                 className="rounded-full p-[5px]"
-                style={{ background: '#0a0810', boxShadow: `0 0 0 2px ${accent}, 0 0 28px ${accent}77` }}
+                style={{ background: '#0c0915', boxShadow: `0 0 0 2.5px ${accent}, 0 0 30px ${accent}66` }}
               >
-                <Avatar username={name} avatarUrl={u?.avatarUrl} size={94} color={accent} />
+                <Avatar username={name} avatarUrl={u?.avatarUrl} size={96} color={accent} />
               </div>
-              {/* status dot, Discord-style */}
-              <span
-                className="absolute bottom-1.5 right-1.5 h-6 w-6 rounded-full"
-                style={{ background: '#0a0810' }}
-              >
+              <span className="absolute bottom-1 right-1 h-7 w-7 rounded-full" style={{ background: '#0c0915' }}>
                 <span
                   className={`status-dot ${STATUS_CLASS[status]} absolute left-1/2 top-1/2 !h-4 !w-4 -translate-x-1/2 -translate-y-1/2`}
+                  title={STATUS_LABEL[status]}
                 />
               </span>
             </div>
+
+            <div className="mb-1 flex gap-2">
+              {isMe ? (
+                <button
+                  onClick={() => {
+                    close();
+                    openSettings();
+                  }}
+                  className="btn-accent flex items-center gap-2 !px-4 !py-2 text-sm"
+                >
+                  <EditIcon size={14} /> редактировать
+                </button>
+              ) : (
+                <button
+                  onClick={() => openDm(userId)}
+                  className="btn-accent flex items-center gap-2 !px-4 !py-2 text-sm"
+                >
+                  <ChatIcon size={15} /> написать
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* ── identity ───────────────────────────────────────────────── */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <h2 className="text-[26px] font-bold leading-tight" style={{ color: accent }}>
+              {name}
+            </h2>
             {u?.isOwner && (
               <span
-                className="mb-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest"
+                className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(212,83,126,0.25), rgba(125,111,196,0.2))',
+                  background: 'linear-gradient(135deg, rgba(212,83,126,0.3), rgba(125,111,196,0.25))',
                   color: '#f3c6d6',
-                  border: '1px solid rgba(212,83,126,0.5)',
+                  border: '1px solid rgba(212,83,126,0.55)',
                 }}
               >
                 ♛ owner
               </span>
             )}
-          </div>
-
-          {/* display name + @username + uid */}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h2 className="text-2xl font-semibold leading-tight" style={{ color: accent }}>
-              {name}
-            </h2>
-            <UidBadge
-              uid={u?.uid ?? null}
-              canEdit={!!perms?.isOwner}
-              editing={editingUid}
-              draft={uidDraft}
-              setDraft={setUidDraft}
-              onStart={() => {
-                setUidDraft(u?.uid ? String(u.uid) : '');
-                setEditingUid(true);
-              }}
-              onCancel={() => setEditingUid(false)}
-              onSave={saveUid}
-            />
-          </div>
-          <div className="mt-0.5 text-sm text-text-muted">@{u?.username ?? 'unknown'}</div>
-
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-text-muted">
-            <span className="flex items-center gap-1.5">
-              <span className={`status-dot ${STATUS_CLASS[status]}`} />
-              {STATUS_LABEL[status]}
-            </span>
             {u?.banned && (
               <span
-                className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                style={{ background: 'rgba(242,63,67,0.15)', color: '#ff8a8d', border: '1px solid rgba(242,63,67,0.5)' }}
+                className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest"
+                style={{ background: 'rgba(242,63,67,0.18)', color: '#ff8a8d', border: '1px solid rgba(242,63,67,0.5)' }}
               >
                 banned
               </span>
             )}
             {isMuted && (
               <span
-                className="rounded-full px-2 py-0.5 text-[11px]"
+                className="rounded-full px-2 py-0.5 text-[10px] uppercase tracking-widest"
                 style={{ background: 'rgba(212,83,126,0.15)', color: '#f0a3bf', border: '1px solid rgba(212,83,126,0.4)' }}
+                title={`до ${mutedUntil!.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
               >
-                timed out until {mutedUntil!.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                timeout
               </span>
             )}
           </div>
 
-          {/* body card */}
-          <div
-            className="mt-4 space-y-4 rounded-glass p-4"
-            style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(180,160,240,0.1)' }}
-          >
-            {showRoles && (
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="section-label">roles</p>
-                  {canManageRoles && (
-                    <button
-                      onClick={() => { setEditingRoles((v) => !v); setError(null); }}
-                      className="rounded-full px-2.5 py-0.5 text-[11px] text-text-muted transition hover:text-accent-violet"
-                      style={{ background: 'rgba(125,111,196,0.12)' }}
-                    >
-                      {editingRoles ? 'done' : 'manage'}
-                    </button>
-                  )}
-                </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <button
+              onClick={copyUsername}
+              className="group/uname flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm text-text-primary transition hover:text-text-heading"
+              style={{ background: 'rgba(125,111,196,0.1)', border: '1px solid rgba(180,160,240,0.18)' }}
+              title="скопировать @username"
+            >
+              @{u?.username ?? 'unknown'}
+              <span className="text-[10px] text-text-muted opacity-0 transition group-hover/uname:opacity-100">
+                копировать
+              </span>
+            </button>
 
-                {editingRoles ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {sortedRoles.map((r) => {
-                      const on = userRoleIds.has(r.id);
-                      const saving = savingRole === r.id;
-                      return (
-                        <button
-                          key={r.id}
-                          disabled={saving}
-                          onClick={() => toggleRole(r.id, !on)}
-                          className="rounded-full px-2.5 py-1 text-xs transition disabled:opacity-50"
-                          style={{
-                            color: on ? '#0a0810' : r.color,
-                            background: on ? r.color : `${r.color}1a`,
-                            border: `1px solid ${r.color}${on ? '' : '55'}`,
-                            fontWeight: on ? 600 : 400,
-                          }}
-                          title={on ? 'click to remove' : 'click to assign'}
-                        >
-                          {saving ? '…' : `${r.symbol} ${r.name}`}
-                        </button>
-                      );
-                    })}
-                    {sortedRoles.length === 0 && (
-                      <p className="text-xs text-text-muted">no roles exist yet — create some first.</p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {(u?.roles ?? []).map((r) => (
-                      <span
-                        key={r.id}
-                        className="rounded-full px-2.5 py-1 text-xs"
-                        style={{ color: r.color, background: `${r.color}1f`, border: `1px solid ${r.color}55` }}
-                      >
-                        {r.symbol} {r.name}
-                      </span>
-                    ))}
-                    {(u?.roles ?? []).length === 0 && (
-                      <span className="text-xs text-text-muted">no roles assigned</span>
-                    )}
-                  </div>
+            {editingUid ? (
+              <span className="flex items-center gap-1">
+                <input
+                  autoFocus
+                  value={uidDraft}
+                  onChange={(e) => setUidDraft(e.target.value.replace(/[^0-9]/g, ''))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveUid();
+                    if (e.key === 'Escape') setEditingUid(false);
+                  }}
+                  className="glass-input !w-16 !py-0.5 text-xs"
+                  placeholder="uid"
+                />
+                <button onClick={saveUid} className="text-[11px] text-accent-violet">ок</button>
+                <button onClick={() => setEditingUid(false)} className="text-[11px] text-text-muted">отмена</button>
+              </span>
+            ) : (
+              <button
+                onClick={
+                  perms?.isOwner
+                    ? () => {
+                        setUidDraft(u?.uid ? String(u.uid) : '');
+                        setEditingUid(true);
+                      }
+                    : undefined
+                }
+                disabled={!perms?.isOwner}
+                title={perms?.isOwner ? 'сменить uid (владелец)' : 'публичный uid — знак старшинства'}
+                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums ${perms?.isOwner ? 'cursor-pointer hover:brightness-125' : 'cursor-default'}`}
+                style={{ background: 'rgba(125,111,196,0.16)', color: '#cfc6f5', border: '1px solid rgba(180,160,240,0.28)' }}
+              >
+                uid #{u?.uid ?? '—'}
+              </button>
+            )}
+          </div>
+
+          {/* ── bio ───────────────────────────────────────────────────── */}
+          {(u?.bio || isMe) && (
+            <div
+              className="mt-4 rounded-[14px] px-4 py-3"
+              style={{ background: 'rgba(5,4,9,0.5)', border: '1px solid rgba(180,160,240,0.1)' }}
+            >
+              <p className="section-label mb-1">обо мне</p>
+              {u?.bio ? (
+                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-primary">
+                  {u.bio}
+                </p>
+              ) : (
+                <button
+                  onClick={() => {
+                    close();
+                    openSettings();
+                  }}
+                  className="text-xs text-text-muted hover:text-accent-violet"
+                >
+                  расскажи о себе в настройках…
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── info grid ─────────────────────────────────────────────── */}
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div
+              className="rounded-[14px] px-4 py-3"
+              style={{ background: 'rgba(5,4,9,0.5)', border: '1px solid rgba(180,160,240,0.1)' }}
+            >
+              <p className="section-label mb-1">статус</p>
+              <p className="flex items-center gap-2 text-sm text-text-primary">
+                <span className={`status-dot ${STATUS_CLASS[status]}`} />
+                {STATUS_LABEL[status]}
+              </p>
+            </div>
+            <div
+              className="rounded-[14px] px-4 py-3"
+              style={{ background: 'rgba(5,4,9,0.5)', border: '1px solid rgba(180,160,240,0.1)' }}
+            >
+              <p className="section-label mb-1">в sephraxia с</p>
+              <p className="text-sm text-text-primary">
+                {u?.createdAt
+                  ? new Date(u.createdAt).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })
+                  : '—'}
+              </p>
+            </div>
+          </div>
+
+          {/* ── roles ─────────────────────────────────────────────────── */}
+          {(canManageRoles || (u?.roles?.length ?? 0) > 0) && (
+            <div
+              className="mt-3 rounded-[14px] px-4 py-3"
+              style={{ background: 'rgba(5,4,9,0.5)', border: '1px solid rgba(180,160,240,0.1)' }}
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <p className="section-label">роли</p>
+                {canManageRoles && (
+                  <button
+                    onClick={() => {
+                      setEditingRoles((v) => !v);
+                      setError(null);
+                    }}
+                    className="rounded-full px-2.5 py-0.5 text-[11px] text-text-muted transition hover:text-accent-violet"
+                    style={{ background: 'rgba(125,111,196,0.12)' }}
+                  >
+                    {editingRoles ? 'готово' : 'управлять'}
+                  </button>
                 )}
               </div>
-            )}
-
-            {u?.createdAt && (
-              <div className={showRoles ? 'border-t border-glass-border pt-3' : ''}>
-                <p className="section-label mb-1">member since</p>
-                <p className="text-sm text-text-primary">
-                  {new Date(u.createdAt).toLocaleDateString(undefined, {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </p>
-              </div>
-            )}
-
-            {showModeration && (
-              <div className="border-t border-glass-border pt-3">
-                <p className="section-label mb-2">moderation</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {perms?.canTimeout && !u?.banned && (
+              <div className="flex flex-wrap gap-1.5">
+                {(editingRoles ? sortedRoles : u?.roles ?? []).map((r) => {
+                  const on = userRoleIds.has(r.id);
+                  const saving = savingRole === r.id;
+                  return editingRoles ? (
                     <button
-                      onClick={() => moderate(() => api.timeoutUser(u!.id, isMuted ? 0 : 10))}
-                      className="rounded-glass px-3 py-1.5 text-xs text-text-primary transition hover:text-accent-violet"
-                      style={{ background: 'rgba(125,111,196,0.12)' }}
+                      key={r.id}
+                      disabled={saving}
+                      onClick={() => toggleRole(r.id, !on)}
+                      className="rounded-full px-2.5 py-1 text-xs transition disabled:opacity-50"
+                      style={{
+                        color: on ? '#0a0810' : r.color,
+                        background: on ? r.color : `${r.color}1a`,
+                        border: `1px solid ${r.color}${on ? '' : '55'}`,
+                        fontWeight: on ? 600 : 400,
+                      }}
+                      title={on ? 'снять роль' : 'выдать роль'}
                     >
-                      {isMuted ? 'remove timeout' : 'timeout 10m'}
+                      {saving ? '…' : `${r.symbol} ${r.name}`}
                     </button>
-                  )}
-                  {perms?.canKick && !u?.banned && (
+                  ) : (
+                    <span
+                      key={r.id}
+                      className="rounded-full px-2.5 py-1 text-xs"
+                      style={{ color: r.color, background: `${r.color}1f`, border: `1px solid ${r.color}55` }}
+                    >
+                      {r.symbol} {r.name}
+                    </span>
+                  );
+                })}
+                {!editingRoles && (u?.roles ?? []).length === 0 && (
+                  <span className="text-xs text-text-muted">ролей нет</span>
+                )}
+                {editingRoles && sortedRoles.length === 0 && (
+                  <span className="text-xs text-text-muted">сначала создай роли (◈ в списке каналов)</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── moderation ────────────────────────────────────────────── */}
+          {showModeration && (
+            <div
+              className="mt-3 rounded-[14px] px-4 py-3"
+              style={{ background: 'rgba(212,83,126,0.05)', border: '1px solid rgba(212,83,126,0.18)' }}
+            >
+              <p className="section-label mb-2">модерация</p>
+              <div className="flex flex-wrap gap-1.5">
+                {perms?.canTimeout && !u?.banned && (
+                  <button
+                    onClick={() => moderate(() => api.timeoutUser(u!.id, isMuted ? 0 : 10))}
+                    className="rounded-glass px-3 py-1.5 text-xs text-text-primary transition hover:text-accent-violet"
+                    style={{ background: 'rgba(125,111,196,0.12)' }}
+                  >
+                    {isMuted ? 'снять тайм-аут' : 'тайм-аут 10м'}
+                  </button>
+                )}
+                {perms?.canKick && !u?.banned && (
+                  <button
+                    onClick={() => moderate(() => api.kickUser(u!.id).then(() => undefined))}
+                    className="rounded-glass px-3 py-1.5 text-xs text-text-muted transition hover:text-accent-pink"
+                    style={{ background: 'rgba(125,111,196,0.12)' }}
+                  >
+                    кикнуть
+                  </button>
+                )}
+                {perms?.canBan && u?.banned && (
+                  <button
+                    onClick={() => moderate(() => api.unbanUser(u!.id))}
+                    className="rounded-glass px-3 py-1.5 text-xs font-semibold text-[#bff0c9] transition hover:brightness-110"
+                    style={{ background: 'rgba(35,165,89,0.18)', border: '1px solid rgba(35,165,89,0.4)' }}
+                  >
+                    разбанить
+                  </button>
+                )}
+                {perms?.canBan &&
+                  !u?.banned &&
+                  (confirmBan ? (
+                    <span className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          moderate(() => api.banUser(u!.id));
+                          close();
+                        }}
+                        className="rounded-glass bg-accent-pink/80 px-3 py-1.5 text-xs text-text-heading hover:bg-accent-pink"
+                      >
+                        точно забанить
+                      </button>
+                      <button
+                        onClick={() => setConfirmBan(false)}
+                        className="rounded-glass px-2 py-1.5 text-xs text-text-muted"
+                        style={{ background: 'rgba(125,111,196,0.1)' }}
+                      >
+                        нет
+                      </button>
+                    </span>
+                  ) : (
                     <button
-                      onClick={() => moderate(() => api.kickUser(u!.id).then(() => undefined))}
+                      onClick={() => setConfirmBan(true)}
                       className="rounded-glass px-3 py-1.5 text-xs text-text-muted transition hover:text-accent-pink"
                       style={{ background: 'rgba(125,111,196,0.12)' }}
                     >
-                      kick
+                      забанить
                     </button>
-                  )}
-                  {perms?.canBan && u?.banned && (
-                    <button
-                      onClick={() => moderate(() => api.unbanUser(u!.id))}
-                      className="rounded-glass px-3 py-1.5 text-xs font-semibold text-[#bff0c9] transition hover:brightness-110"
-                      style={{ background: 'rgba(35,165,89,0.18)', border: '1px solid rgba(35,165,89,0.4)' }}
-                    >
-                      unban
-                    </button>
-                  )}
-                  {perms?.canBan && !u?.banned &&
-                    (confirmBan ? (
-                      <span className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => { moderate(() => api.banUser(u!.id)); close(); }}
-                          className="rounded-glass bg-accent-pink/80 px-3 py-1.5 text-xs text-text-heading hover:bg-accent-pink"
-                        >
-                          confirm ban
-                        </button>
-                        <button
-                          onClick={() => setConfirmBan(false)}
-                          className="rounded-glass px-2 py-1.5 text-xs text-text-muted"
-                          style={{ background: 'rgba(125,111,196,0.1)' }}
-                        >
-                          no
-                        </button>
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => setConfirmBan(true)}
-                        className="rounded-glass px-3 py-1.5 text-xs text-text-muted transition hover:text-accent-pink"
-                        style={{ background: 'rgba(125,111,196,0.12)' }}
-                      >
-                        ban
-                      </button>
-                    ))}
-                </div>
+                  ))}
               </div>
-            )}
-
-            {error && <p className="text-xs text-accent-pink">{error}</p>}
-          </div>
-
-          {isMe ? (
-            <button className="btn-accent mt-5 w-full" onClick={() => { close(); openSettings(); }}>
-              edit profile
-            </button>
-          ) : (
-            <button className="btn-accent mt-5 w-full" onClick={() => openDm(userId)}>
-              send message
-            </button>
+            </div>
           )}
+
+          {error && <p className="mt-3 text-xs text-accent-pink">{error}</p>}
+          <div className="pb-6" />
         </div>
       </div>
     </div>
-  );
-}
-
-function UidBadge({
-  uid,
-  canEdit,
-  editing,
-  draft,
-  setDraft,
-  onStart,
-  onCancel,
-  onSave,
-}: {
-  uid: number | null;
-  canEdit: boolean;
-  editing: boolean;
-  draft: string;
-  setDraft: (v: string) => void;
-  onStart: () => void;
-  onCancel: () => void;
-  onSave: () => void;
-}) {
-  if (editing) {
-    return (
-      <span className="flex items-center gap-1">
-        <input
-          autoFocus
-          value={draft}
-          onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ''))}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') onSave();
-            if (e.key === 'Escape') onCancel();
-          }}
-          className="glass-input !w-16 !py-0.5 text-xs"
-          placeholder="uid"
-        />
-        <button onClick={onSave} className="text-[11px] text-accent-violet hover:brightness-125">save</button>
-        <button onClick={onCancel} className="text-[11px] text-text-muted">cancel</button>
-      </span>
-    );
-  }
-  return (
-    <button
-      onClick={canEdit ? onStart : undefined}
-      disabled={!canEdit}
-      title={canEdit ? 'change UID (owner)' : 'public UID — seniority marker'}
-      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ${canEdit ? 'cursor-pointer hover:brightness-125' : 'cursor-default'}`}
-      style={{ background: 'rgba(125,111,196,0.18)', color: '#cfc6f5', border: '1px solid rgba(180,160,240,0.3)' }}
-    >
-      UID #{uid ?? '—'}
-    </button>
   );
 }
