@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Message, PublicUser } from '@sephraxia/shared';
 import { useAuthStore } from '../store/auth';
 import { useUiStore } from '../store/ui';
@@ -32,6 +32,19 @@ export function MessageItem({ message, author, grouped, highlight }: Props) {
   const [picker, setPicker] = useState<{ x: number; y: number; up: boolean } | null>(null);
 
   const isMine = me?.id === message.authorId;
+
+  // Composer pressed ↑ to edit the last own message → enter edit mode here.
+  const editRequestId = useUiStore((s) => s.editRequestId);
+  const consumeEdit = useUiStore((s) => s.consumeEdit);
+  useEffect(() => {
+    if (editRequestId && editRequestId === message.id && isMine) {
+      setDraft(message.content);
+      setEditing(true);
+      consumeEdit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editRequestId]);
+
   const canDelete = isMine || canDeleteOthers;
   const canPin = isMine || canDeleteOthers;
   const color = nameColor(author);

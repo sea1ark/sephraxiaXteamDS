@@ -3,6 +3,7 @@
 // refreshes every client.
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '../lib/api';
+import { copyText } from '../lib/clipboard';
 import { useUiStore } from '../store/ui';
 import { useChatStore } from '../store/chat';
 import { useAuthStore } from '../store/auth';
@@ -142,7 +143,7 @@ export function ChannelContextMenu() {
             <Item
               label="copy channel id"
               onClick={() => {
-                navigator.clipboard?.writeText(channel.id).catch(() => {});
+                copyText(channel.id, "id скопирован");
                 close();
               }}
             />

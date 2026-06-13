@@ -349,7 +349,16 @@ export function SettingsModal() {
                   </select>
                 </div>
               ))}
-              <p className="text-xs text-text-muted">
+
+              {/* push-to-talk */}
+              <div
+                className="mt-2 rounded-[14px] p-4"
+                style={{ background: 'rgba(5,4,9,0.5)', border: '1px solid rgba(180,160,240,0.12)' }}
+              >
+                <PttSettings />
+              </div>
+
+              <p className="mt-3 text-xs text-text-muted">
                 изменения применяются сразу — даже посреди звонка.
               </p>
             </>
@@ -377,6 +386,78 @@ export function SettingsModal() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Pretty-print a KeyboardEvent.code like "KeyV" → "V", "Space" → "Space".
+function keyLabel(code: string | null): string {
+  if (!code) return 'не задано';
+  if (code.startsWith('Key')) return code.slice(3);
+  if (code.startsWith('Digit')) return code.slice(5);
+  if (code.startsWith('Arrow')) return code.slice(5);
+  return code;
+}
+
+function PttSettings() {
+  const enabled = useVoiceStore((s) => s.pttEnabled);
+  const key = useVoiceStore((s) => s.pttKey);
+  const setEnabled = useVoiceStore((s) => s.setPttEnabled);
+  const setKey = useVoiceStore((s) => s.setPttKey);
+  const [listening, setListening] = useState(false);
+
+  useEffect(() => {
+    if (!listening) return;
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      if (e.code !== 'Escape') setKey(e.code);
+      setListening(false);
+    };
+    window.addEventListener('keydown', onKey, { once: true });
+    return () => window.removeEventListener('keydown', onKey);
+  }, [listening, setKey]);
+
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-text-primary">режим рации (push-to-talk)</p>
+          <p className="text-[10px] text-text-muted">микрофон открыт только пока зажата клавиша</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setEnabled(!enabled)}
+          className="relative h-5 w-9 shrink-0 rounded-full transition"
+          style={{ background: enabled ? 'rgba(125,111,196,0.85)' : 'rgba(109,102,128,0.35)' }}
+          role="switch"
+          aria-checked={enabled}
+        >
+          <span className="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all" style={{ left: enabled ? '18px' : '2px' }} />
+        </button>
+      </div>
+      {enabled && (
+        <div className="mt-3 flex items-center gap-3">
+          <span className="section-label">клавиша</span>
+          <button
+            type="button"
+            onClick={() => setListening(true)}
+            className="rounded-lg px-4 py-1.5 text-sm font-semibold transition"
+            style={{
+              background: listening ? 'rgba(212,83,126,0.18)' : 'rgba(125,111,196,0.16)',
+              color: listening ? '#f0a3bf' : '#cfc6f5',
+              border: `1px solid ${listening ? 'rgba(212,83,126,0.5)' : 'rgba(180,160,240,0.3)'}`,
+              textTransform: 'none',
+            }}
+          >
+            {listening ? 'нажми любую клавишу…' : keyLabel(key)}
+          </button>
+          {key && !listening && (
+            <button onClick={() => setKey(null)} className="text-[11px] text-text-muted hover:text-accent-pink">
+              сбросить
+            </button>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 

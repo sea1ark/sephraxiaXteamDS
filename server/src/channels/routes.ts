@@ -15,13 +15,9 @@ const createChannelSchema = z.object({
   serverId: z.string().optional(), // defaults to the home server
 });
 
-/** Channel management rights: platform canManageChannels OR owning that server. */
+/** Channel management rights, scoped to the server (owner/admin/role). */
 async function canManageServerChannels(userId: string, serverId: string | null): Promise<boolean> {
-  const perms = await getPermissions(userId);
-  if (perms.canManageChannels) return true; // includes platform owner
-  if (!serverId) return false;
-  const server = await prisma.server.findUnique({ where: { id: serverId } });
-  return server?.ownerId === userId;
+  return (await getPermissions(userId, serverId)).canManageChannels;
 }
 
 const updateChannelSchema = z.object({

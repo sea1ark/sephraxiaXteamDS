@@ -28,6 +28,9 @@ interface VoiceState {
   inputDeviceId: string | null; // selected microphone (persisted)
   outputDeviceId: string | null; // selected speakers (persisted)
   cameraDeviceId: string | null; // selected webcam (persisted)
+  pttEnabled: boolean; // push-to-talk mode (persisted)
+  pttKey: string | null; // KeyboardEvent.code to hold to talk (persisted)
+  pttHeld: boolean; // transient: PTT key currently held
 
   // 1:1 calls + live media
   call: CallInfo;
@@ -49,6 +52,9 @@ interface VoiceState {
   setInputDeviceId: (id: string | null) => void;
   setOutputDeviceId: (id: string | null) => void;
   setCameraDeviceId: (id: string | null) => void;
+  setPttEnabled: (v: boolean) => void;
+  setPttKey: (code: string | null) => void;
+  setPttHeld: (v: boolean) => void;
 
   // media + call actions
   setSharingScreen: (v: boolean) => void;
@@ -75,6 +81,9 @@ export const useVoiceStore = create<VoiceState>()(
       inputDeviceId: null,
       outputDeviceId: null,
       cameraDeviceId: null,
+      pttEnabled: false,
+      pttKey: null,
+      pttHeld: false,
 
       call: { status: 'idle', peerUserId: null },
       sharingScreen: false,
@@ -128,6 +137,9 @@ export const useVoiceStore = create<VoiceState>()(
       setInputDeviceId: (inputDeviceId) => set({ inputDeviceId }),
       setOutputDeviceId: (outputDeviceId) => set({ outputDeviceId }),
       setCameraDeviceId: (cameraDeviceId) => set({ cameraDeviceId }),
+      setPttEnabled: (pttEnabled) => set({ pttEnabled }),
+      setPttKey: (pttKey) => set({ pttKey }),
+      setPttHeld: (pttHeld) => set({ pttHeld }),
 
       setSharingScreen: (sharingScreen) => set({ sharingScreen }),
       setCameraOn: (cameraOn) => set({ cameraOn }),
@@ -155,6 +167,8 @@ export const useVoiceStore = create<VoiceState>()(
         inputDeviceId: s.inputDeviceId,
         outputDeviceId: s.outputDeviceId,
         cameraDeviceId: s.cameraDeviceId,
+        pttEnabled: s.pttEnabled,
+        pttKey: s.pttKey,
       }),
     },
   ),

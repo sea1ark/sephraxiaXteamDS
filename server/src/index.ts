@@ -13,6 +13,8 @@ import { uploadRoutes } from './uploads/routes';
 import { moderationRoutes } from './moderation/routes';
 import { friendRoutes } from './friends/routes';
 import { serverRoutes, ensureHomeServer } from './servers/routes';
+import { configRoutes } from './configs/routes';
+import { veilsightRoutes } from './veilsight/routes';
 import { setupSocket } from './socket';
 import { prisma } from './prisma';
 import { mkdir } from 'node:fs/promises';
@@ -67,6 +69,8 @@ async function main() {
   await app.register(moderationRoutes);
   await app.register(friendRoutes);
   await app.register(serverRoutes);
+  await app.register(configRoutes);
+  await app.register(veilsightRoutes);
 
   await ensureOwner();
   await assignUids();

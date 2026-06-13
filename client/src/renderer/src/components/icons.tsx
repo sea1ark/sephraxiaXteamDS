@@ -236,3 +236,18 @@ export const HashIcon = (p: IconProps) => (
     <line x1="16" y1="3" x2="14" y2="21" />
   </Svg>
 );
+
+export const EyeIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+    <circle cx="12" cy="12" r="3" />
+  </Svg>
+);
+
+export const FolderCodeIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <path d="M10 12l-2 2 2 2" />
+    <path d="M14 12l2 2-2 2" />
+  </Svg>
+);

@@ -198,8 +198,9 @@ export async function ensureHomeServer(): Promise<void> {
       data: { name: 'sephraxia', icon: '✦', ownerId: owner.id },
     });
   }
-  // Adopt channels that predate multi-server support.
+  // Adopt channels and roles that predate multi-server support.
   await prisma.channel.updateMany({ where: { serverId: null }, data: { serverId: home.id } });
+  await prisma.role.updateMany({ where: { serverId: null }, data: { serverId: home.id } });
   // Make sure every existing user is a member of home.
   const users = await prisma.user.findMany({ select: { id: true } });
   const members = await prisma.serverMember.findMany({

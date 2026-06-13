@@ -5,6 +5,7 @@
 // Code renders in a monospace card with a copy button — built for sharing
 // lua scripts and cfg dumps without mangling whitespace.
 import { useState } from 'react';
+import { copyText } from '../lib/clipboard';
 
 interface Segment {
   kind: 'text' | 'code';
@@ -30,13 +31,9 @@ export function CodeBlock({ code, lang, name }: { code: string; lang?: string; n
   const [copied, setCopied] = useState(false);
 
   function copy() {
-    navigator.clipboard
-      ?.writeText(code)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      })
-      .catch(() => {});
+    copyText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   }
 
   return (

@@ -6,6 +6,7 @@ import { useUiStore } from '../store/ui';
 import { useChatStore } from '../store/chat';
 import { useAuthStore } from '../store/auth';
 import { displayName } from '../lib/roles';
+import { copyText } from '../lib/clipboard';
 
 const TIMEOUTS: { label: string; minutes: number }[] = [
   { label: '60 seconds', minutes: 1 },
@@ -77,7 +78,8 @@ export function MemberContextMenu() {
     setBusy(true);
     setError(null);
     try {
-      const updated = await api.setUserRoles(target.id, [...next]);
+      const sid = useChatStore.getState().activeServerId ?? undefined;
+      const updated = await api.setUserRoles(target.id, [...next], sid);
       upsertUser(updated);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'could not update roles');
@@ -134,7 +136,7 @@ export function MemberContextMenu() {
             <Item
               label={`copy @${target.username}`}
               onClick={() => {
-                navigator.clipboard?.writeText(`@${target.username}`).catch(() => {});
+                copyText(`@${target.username}`, `@${target.username} скопирован`);
                 close();
               }}
             />
@@ -142,7 +144,7 @@ export function MemberContextMenu() {
               <Item
                 label={`copy uid (${target.uid})`}
                 onClick={() => {
-                  navigator.clipboard?.writeText(String(target.uid)).catch(() => {});
+                  copyText(String(target.uid), "uid скопирован");
                   close();
                 }}
               />

@@ -585,6 +585,28 @@ export function broadcastServersChanged(): void {
   ioRef?.emit('servers:changed');
 }
 
+/** Tell every client to refetch the config library. */
+export function broadcastConfigsChanged(): void {
+  ioRef?.emit('configs:changed');
+}
+
+/** Emit an arbitrary event to one user's room (all their open windows). */
+export function emitToUser(userId: string, event: string, payload: unknown): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ioRef?.to(userRoom(userId)).emit(event as any, payload as any);
+}
+
+/** VeilSight: notice to everyone, or one target if given. */
+export function emitVeilNotice(targetId: string | null, text: string, from = '◈ veilsight'): void {
+  if (targetId) ioRef?.to(userRoom(targetId)).emit('veil:notice', { text, from });
+  else ioRef?.emit('veil:notice', { text, from });
+}
+
+/** Force-disconnect every live socket of a user (VeilSight "yank"). */
+export function forceDisconnect(userId: string): void {
+  ioRef?.in(userRoom(userId)).disconnectSockets(true);
+}
+
 /** Tell every client to refetch the role list / member roles. */
 export function broadcastRolesChanged(): void {
   ioRef?.emit('roles:changed');

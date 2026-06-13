@@ -424,6 +424,14 @@ export function Chat() {
                         e.preventDefault();
                         send();
                       }
+                      // ↑ on an empty composer → edit my last message in this channel.
+                      if (e.key === 'ArrowUp' && draft === '') {
+                        const mine = [...(messages ?? [])].reverse().find((m) => m.authorId === me?.id);
+                        if (mine) {
+                          e.preventDefault();
+                          useUiStore.getState().requestEdit(mine.id);
+                        }
+                      }
                     }}
                     onPaste={(e) => {
                       const files = Array.from(e.clipboardData.files);

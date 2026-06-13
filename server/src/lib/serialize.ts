@@ -47,6 +47,7 @@ interface DbRole {
   color: string;
   symbol: string;
   position: number;
+  serverId?: string | null;
   canManageChannels: boolean;
   canDeleteMessages: boolean;
   canManageRoles: boolean;
@@ -78,6 +79,7 @@ export function toRole(r: DbRole): Role {
     color: r.color,
     symbol: r.symbol,
     position: r.position,
+    serverId: r.serverId ?? null,
     canManageChannels: r.canManageChannels,
     canDeleteMessages: r.canDeleteMessages,
     canManageRoles: r.canManageRoles,

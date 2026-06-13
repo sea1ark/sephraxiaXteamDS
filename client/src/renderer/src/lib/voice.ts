@@ -606,11 +606,30 @@ function applyMicEnabled(enabled: boolean): void {
   micStream?.getAudioTracks().forEach((t) => (t.enabled = enabled));
 }
 
+/** Effective mic state given mute, deafen, and push-to-talk. */
+function micShouldBeOn(): boolean {
+  const s = store();
+  if (s.deafened) return false;
+  if (s.pttEnabled) return s.pttHeld; // PTT overrides manual mute
+  return !s.muted;
+}
+
 function setMuted(muted: boolean): void {
-  applyMicEnabled(!muted);
   store().setMuted(muted);
+  applyMicEnabled(micShouldBeOn());
   if (session?.kind === 'channel') getSocket()?.emit('voice:state', { channelId: session.id, muted });
   announceMediaAll(); // propagate mute to call peers
+}
+
+/** Push-to-talk: held → talk, released → silent. No-op unless PTT is enabled. */
+export function setPttHeld(held: boolean): void {
+  const s = store();
+  if (!s.pttEnabled || s.pttHeld === held) return;
+  s.setPttHeld(held);
+  applyMicEnabled(micShouldBeOn());
+  const muted = !held;
+  if (session?.kind === 'channel') getSocket()?.emit('voice:state', { channelId: session.id, muted });
+  announceMediaAll();
 }
 
 export function toggleMute(): void {

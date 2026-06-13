@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, clipboard } from 'electron';
 import type { UpdaterStatus } from '@sephraxia/shared';
 
 /** A capturable screen or window, as returned by the main process. */
@@ -23,6 +23,12 @@ const api = {
   app: {
     // Installed app version, e.g. "0.1.8".
     version: (): Promise<string> => ipcRenderer.invoke('app:version'),
+  },
+  // Native clipboard — navigator.clipboard is unreliable in a frameless
+  // Electron window (focus/permission quirks), so go straight to the OS.
+  clipboard: {
+    writeText: (text: string): void => clipboard.writeText(text),
+    readText: (): string => clipboard.readText(),
   },
   updater: {
     // Current status (for components mounting after early events fired).

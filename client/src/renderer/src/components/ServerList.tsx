@@ -6,9 +6,10 @@ import type { ServerInfo } from '@sephraxia/shared';
 import { api, ApiError } from '../lib/api';
 import { useUiStore } from '../store/ui';
 import { useChatStore } from '../store/chat';
+import { copyText } from '../lib/clipboard';
 import { useAuthStore } from '../store/auth';
 import { toast } from '../store/toasts';
-import { ChatIcon, UsersIcon, PlusIcon } from './icons';
+import { ChatIcon, UsersIcon, PlusIcon, FolderCodeIcon, EyeIcon } from './icons';
 import { ServerModal, refreshServers } from './ServerModal';
 
 interface ServerMenuState {
@@ -31,6 +32,8 @@ export function ServerList() {
   const view = useUiStore((s) => s.view);
   const showServer = useUiStore((s) => s.showServer);
   const showFriends = useUiStore((s) => s.showFriends);
+  const showConfigs = useUiStore((s) => s.showConfigs);
+  const showVeilSight = useUiStore((s) => s.showVeilSight);
   const openDm = useUiStore((s) => s.openDm);
   const activeDmUserId = useUiStore((s) => s.activeDmUserId);
   const servers = useChatStore((s) => s.servers);
@@ -84,6 +87,34 @@ export function ServerList() {
           </span>
         )}
       </button>
+
+      <button
+        onClick={showConfigs}
+        className={`${railBtn} ${
+          view === 'configs'
+            ? 'text-text-heading shadow-glow-violet'
+            : 'text-text-muted hover:text-accent-violet'
+        }`}
+        style={{ background: 'rgba(125,111,196,0.12)' }}
+        title="библиотека конфигов"
+      >
+        <FolderCodeIcon size={22} />
+      </button>
+
+      {isOwner && (
+        <button
+          onClick={showVeilSight}
+          className={railBtn}
+          style={
+            view === 'veilsight'
+              ? { background: 'rgba(255,77,109,0.2)', color: '#ff8a9c', boxShadow: '0 0 18px rgba(255,77,109,0.45)' }
+              : { background: 'rgba(255,77,109,0.1)', color: '#ff6d85' }
+          }
+          title="veilsight · root console"
+        >
+          <EyeIcon size={22} />
+        </button>
+      )}
 
       <div className="h-px w-8 bg-glass-border" />
 
@@ -211,10 +242,9 @@ function ServerContextMenu({
         </p>
         {server.inviteCode && (
           <Item
-            label="copy invite"
+            label="скопировать инвайт"
             onClick={() => {
-              navigator.clipboard?.writeText(server.inviteCode!).catch(() => {});
-              toast('инвайт-код скопирован', 'success');
+              copyText(server.inviteCode!, 'инвайт-код скопирован');
               onClose();
             }}
           />

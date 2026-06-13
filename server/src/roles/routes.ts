@@ -1,5 +1,5 @@
-// Role CRUD and assignment. Reading is open to any authed user; mutations need
-// the canManageRoles permission (the owner always has it).
+// Role CRUD and assignment — roles are SERVER-SCOPED. Mutations require
+// canManageRoles ON THAT SERVER (platform owner & server owner always pass).
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../prisma';
@@ -13,6 +13,7 @@ const roleSchema = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'color must be a hex like #7d6fc4'),
   symbol: z.string().max(4).default(''),
   position: z.number().int().min(0).max(9999).optional(),
+  serverId: z.string().optional(),
   canManageChannels: z.boolean().optional(),
   canDeleteMessages: z.boolean().optional(),
   canManageRoles: z.boolean().optional(),
@@ -21,34 +22,46 @@ const roleSchema = z.object({
   canTimeout: z.boolean().optional(),
 });
 
+async function homeId(): Promise<string | null> {
+  const home = await prisma.server.findFirst({ orderBy: { createdAt: 'asc' }, select: { id: true } });
+  return home?.id ?? null;
+}
+
 export async function roleRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticate);
 
-  // Guard mutating routes behind canManageRoles.
-  async function requireManageRoles(userId: string): Promise<boolean> {
-    return (await getPermissions(userId)).canManageRoles;
+  async function canManage(userId: string, serverId: string | null): Promise<boolean> {
+    return (await getPermissions(userId, serverId)).canManageRoles;
   }
 
-  app.get('/roles', async () => {
-    const roles = await prisma.role.findMany({ orderBy: { position: 'desc' } });
+  // Roles of one server (defaults to home). Only that server's roles.
+  app.get('/roles', async (request) => {
+    const { serverId } = request.query as { serverId?: string };
+    const sid = serverId ?? (await homeId());
+    const roles = await prisma.role.findMany({
+      where: { serverId: sid },
+      orderBy: { position: 'desc' },
+    });
     return roles.map(toRole);
   });
 
   app.post('/roles', async (request, reply) => {
-    if (!(await requireManageRoles(request.user!.sub))) {
-      return reply.code(403).send({ error: 'you cannot manage roles' });
-    }
     const parsed = roleSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? 'Invalid input' });
     }
-    const count = await prisma.role.count();
+    const serverId = parsed.data.serverId ?? (await homeId());
+    if (!(await canManage(request.user!.sub, serverId))) {
+      return reply.code(403).send({ error: 'you cannot manage roles on this server' });
+    }
+    const count = await prisma.role.count({ where: { serverId } });
     const role = await prisma.role.create({
       data: {
         name: parsed.data.name,
         color: parsed.data.color,
         symbol: parsed.data.symbol,
-        position: count,
+        position: parsed.data.position ?? count,
+        serverId,
         canManageChannels: parsed.data.canManageChannels ?? false,
         canDeleteMessages: parsed.data.canDeleteMessages ?? false,
         canManageRoles: parsed.data.canManageRoles ?? false,
@@ -62,57 +75,68 @@ export async function roleRoutes(app: FastifyInstance) {
   });
 
   app.patch('/roles/:id', async (request, reply) => {
-    if (!(await requireManageRoles(request.user!.sub))) {
-      return reply.code(403).send({ error: 'you cannot manage roles' });
-    }
     const { id } = request.params as { id: string };
+    const existing = await prisma.role.findUnique({ where: { id } });
+    if (!existing) return reply.code(404).send({ error: 'role not found' });
+    if (!(await canManage(request.user!.sub, existing.serverId))) {
+      return reply.code(403).send({ error: 'you cannot manage roles on this server' });
+    }
     const parsed = roleSchema.partial().safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? 'Invalid input' });
     }
-    try {
-      const role = await prisma.role.update({ where: { id }, data: parsed.data });
-      broadcastRolesChanged();
-      return toRole(role);
-    } catch {
-      return reply.code(404).send({ error: 'role not found' });
-    }
+    const { serverId: _ignore, ...data } = parsed.data; // can't move a role between servers
+    const role = await prisma.role.update({ where: { id }, data });
+    broadcastRolesChanged();
+    return toRole(role);
   });
 
   app.delete('/roles/:id', async (request, reply) => {
-    if (!(await requireManageRoles(request.user!.sub))) {
-      return reply.code(403).send({ error: 'you cannot manage roles' });
-    }
     const { id } = request.params as { id: string };
-    try {
-      await prisma.role.delete({ where: { id } });
-      broadcastRolesChanged();
-      return reply.code(204).send();
-    } catch {
-      return reply.code(404).send({ error: 'role not found' });
+    const existing = await prisma.role.findUnique({ where: { id } });
+    if (!existing) return reply.code(404).send({ error: 'role not found' });
+    if (!(await canManage(request.user!.sub, existing.serverId))) {
+      return reply.code(403).send({ error: 'you cannot manage roles on this server' });
     }
+    await prisma.role.delete({ where: { id } });
+    broadcastRolesChanged();
+    return reply.code(204).send();
   });
 
-  // Replace a user's full role set, then broadcast their updated profile.
+  // Replace a user's roles FOR ONE SERVER (keeps roles from other servers).
   app.put('/users/:id/roles', async (request, reply) => {
-    if (!(await requireManageRoles(request.user!.sub))) {
-      return reply.code(403).send({ error: 'you cannot manage roles' });
-    }
     const { id } = request.params as { id: string };
-    const body = z.object({ roleIds: z.array(z.string()) }).safeParse(request.body);
+    const body = z
+      .object({ roleIds: z.array(z.string()), serverId: z.string().optional() })
+      .safeParse(request.body);
     if (!body.success) return reply.code(400).send({ error: 'roleIds[] required' });
 
-    try {
-      const user = await prisma.user.update({
-        where: { id },
-        data: { roles: { set: body.data.roleIds.map((roleId) => ({ id: roleId })) } },
-        include: { roles: true },
-      });
-      const pub = toPublicUser(user);
-      broadcastUserUpdate(pub);
-      return pub;
-    } catch {
-      return reply.code(404).send({ error: 'user not found' });
+    // The roles being assigned must all belong to one server; derive it.
+    const assigned = await prisma.role.findMany({ where: { id: { in: body.data.roleIds } } });
+    const serverId =
+      body.data.serverId ?? assigned[0]?.serverId ?? (await homeId());
+    if (!(await canManage(request.user!.sub, serverId))) {
+      return reply.code(403).send({ error: 'you cannot manage roles on this server' });
     }
+    // Reject roles from a different server than the scope.
+    if (assigned.some((r) => r.serverId !== serverId)) {
+      return reply.code(400).send({ error: 'roles belong to a different server' });
+    }
+
+    const target = await prisma.user.findUnique({ where: { id }, include: { roles: true } });
+    if (!target) return reply.code(404).send({ error: 'user not found' });
+
+    // Keep this user's roles from OTHER servers; replace only this server's set.
+    const keep = target.roles.filter((r) => r.serverId !== serverId).map((r) => r.id);
+    const nextIds = [...new Set([...keep, ...body.data.roleIds])];
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { roles: { set: nextIds.map((roleId) => ({ id: roleId })) } },
+      include: { roles: true },
+    });
+    const pub = toPublicUser(user);
+    broadcastUserUpdate(pub);
+    return pub;
   });
 }

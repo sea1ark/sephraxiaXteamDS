@@ -2,7 +2,7 @@
 // right-click menu, and the active reply target.
 import { create } from 'zustand';
 
-type View = 'server' | 'dm' | 'friends';
+type View = 'server' | 'dm' | 'friends' | 'configs' | 'veilsight';
 export type MediaKind = 'image' | 'video' | 'audio';
 
 export interface MediaTarget {
@@ -59,9 +59,12 @@ interface UiState {
   quickSwitcherOpen: boolean; // Ctrl+K channel/user jumper
   chatPanel: ChatPanel | null; // pins / search panel in the chat header
   pendingJump: JumpTarget | null; // navigate-to-message request
+  editRequestId: string | null; // message id the composer asked to edit (↑ key)
 
   showServer: () => void;
   showFriends: () => void;
+  showConfigs: () => void;
+  showVeilSight: () => void;
   openDm: (userId: string) => void;
 
   openProfile: (userId: string) => void;
@@ -93,6 +96,8 @@ interface UiState {
   closeChatPanel: () => void;
   requestJump: (target: JumpTarget) => void;
   clearJump: () => void;
+  requestEdit: (messageId: string) => void;
+  consumeEdit: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -116,9 +121,12 @@ export const useUiStore = create<UiState>((set) => ({
   quickSwitcherOpen: false,
   chatPanel: null,
   pendingJump: null,
+  editRequestId: null,
 
   showServer: () => set({ view: 'server' }),
   showFriends: () => set({ view: 'friends', memberMenu: null, voiceStageChannelId: null }),
+  showConfigs: () => set({ view: 'configs', memberMenu: null, voiceStageChannelId: null }),
+  showVeilSight: () => set({ view: 'veilsight', memberMenu: null, voiceStageChannelId: null }),
   openDm: (userId) =>
     set({ view: 'dm', activeDmUserId: userId, profileUserId: null, memberMenu: null, replyTo: null, voiceStageChannelId: null }),
 
@@ -153,4 +161,6 @@ export const useUiStore = create<UiState>((set) => ({
   requestJump: (target) =>
     set({ pendingJump: target, view: 'server', chatPanel: null, voiceStageChannelId: null }),
   clearJump: () => set({ pendingJump: null }),
+  requestEdit: (messageId) => set({ editRequestId: messageId }),
+  consumeEdit: () => set({ editRequestId: null }),
 }));

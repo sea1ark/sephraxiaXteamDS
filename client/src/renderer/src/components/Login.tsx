@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuthStore } from '../store/auth';
 import { SERVER_URL, setServerUrl } from '../lib/config';
 import { useUpdater } from '../lib/useUpdater';
+import { toast } from '../store/toasts';
 
 export function Login() {
   const setSession = useAuthStore((s) => s.setSession);
@@ -15,6 +16,22 @@ export function Login() {
   const [server, setServer] = useState(SERVER_URL);
   const [serverSaved, setServerSaved] = useState(false);
   const update = useUpdater();
+
+  // After a manual check, announce the outcome so the button never feels dead.
+  const checkedManually = useRef(false);
+  useEffect(() => {
+    if (!checkedManually.current) return;
+    if (update.upToDate) {
+      toast('у тебя актуальная версия ✦', 'success');
+      checkedManually.current = false;
+    } else if (update.status.state === 'error') {
+      toast('не удалось проверить обновления', 'error');
+      checkedManually.current = false;
+    } else if (update.hasUpdate) {
+      toast('найдено обновление — качаю…', 'info');
+      checkedManually.current = false;
+    }
+  }, [update.upToDate, update.status.state, update.hasUpdate]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -149,7 +166,15 @@ export function Login() {
           </span>
           <button
             type="button"
-            onClick={() => (update.hasUpdate ? update.install() : update.check())}
+            onClick={() => {
+              if (update.hasUpdate) {
+                update.install();
+              } else {
+                checkedManually.current = true;
+                toast('проверяю обновления…', 'info');
+                update.check();
+              }
+            }}
             disabled={update.checking}
             className="rounded-glass px-3 py-1 text-[11px] font-medium transition disabled:opacity-60"
             style={

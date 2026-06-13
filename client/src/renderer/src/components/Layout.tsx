@@ -15,6 +15,8 @@ import { DmList } from './DmList';
 import { Chat } from './Chat';
 import { DmChat } from './DmChat';
 import { FriendsView } from './FriendsView';
+import { ConfigsView } from './ConfigsView';
+import { VeilSightPanel } from './VeilSightPanel';
 import { UserList } from './UserList';
 import { VoiceStage } from './VoiceStage';
 
@@ -102,14 +104,22 @@ export function Layout() {
       upsertUser(user);
       if (user.id === myId) {
         patchUser(user);
-        api.getPermissions().then(setPermissions).catch(() => {});
+        const sid = useChatStore.getState().activeServerId ?? undefined;
+        api.getPermissions(sid).then(setPermissions).catch(() => {});
       }
     });
     socket.on('roles:changed', () => {
-      api.getRoles().then(setRoles).catch(() => {});
+      const sid = useChatStore.getState().activeServerId ?? undefined;
+      api.getRoles(sid).then(setRoles).catch(() => {});
       api.getUsers().then(setUsers).catch(() => {});
-      api.getPermissions().then(setPermissions).catch(() => {});
+      api.getPermissions(sid).then(setPermissions).catch(() => {});
     });
+    socket.on('configs:changed', () => {
+      if (useUiStore.getState().view === 'configs') {
+        window.dispatchEvent(new Event('sx:configs-refresh'));
+      }
+    });
+    socket.on('veil:notice', ({ text, from }) => toast(from, 'info', text));
     socket.on('channels:changed', () => {
       api.getChannels().then(setChannels).catch(() => {});
     });
@@ -228,6 +238,16 @@ export function Layout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeChannelId]);
 
+  // Roles & permissions are server-scoped — refetch them whenever the active
+  // server changes so the member list colours and manage buttons are correct.
+  const activeServerId = useChatStore((s) => s.activeServerId);
+  useEffect(() => {
+    const sid = activeServerId ?? undefined;
+    api.getRoles(sid).then(setRoles).catch(() => {});
+    api.getPermissions(sid).then(setPermissions).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeServerId]);
+
   // Load DM history when the active DM conversation changes.
   useEffect(() => {
     if (!activeDmUserId) return;
@@ -268,6 +288,8 @@ export function Layout() {
           <FriendsView />
         </>
       )}
+      {view === 'configs' && <ConfigsView />}
+      {view === 'veilsight' && <VeilSightPanel />}
     </div>
   );
 }

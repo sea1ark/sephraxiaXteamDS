@@ -5,6 +5,8 @@ import type {
   AuthResponse,
   AuthTokens,
   Channel,
+  ConfigPost,
+  CreateConfigPayload,
   CreateRolePayload,
   DirectMessage,
   DmConversation,
@@ -15,6 +17,7 @@ import type {
   Role,
   ServerInfo,
   UpdateProfilePayload,
+  VeilOverview,
 } from '@sephraxia/shared';
 import { SERVER_URL } from './config';
 import { useAuthStore } from '../store/auth';
@@ -133,7 +136,10 @@ export const api = {
   updateProfile: (data: UpdateProfilePayload) =>
     request<PublicUser>('/users/me', { method: 'PATCH', body: JSON.stringify(data) }),
 
-  getPermissions: () => request<EffectivePermissions>('/users/me/permissions'),
+  getPermissions: (serverId?: string) =>
+    request<EffectivePermissions>(
+      `/users/me/permissions${serverId ? `?serverId=${serverId}` : ''}`,
+    ),
 
   // Avatar file upload (multipart). Returns the updated user.
   uploadAvatar: async (file: File): Promise<PublicUser> => {
@@ -190,18 +196,52 @@ export const api = {
     return res.json() as Promise<Attachment>;
   },
 
-  // Roles
-  getRoles: () => request<Role[]>('/roles'),
-  createRole: (data: CreateRolePayload) =>
+  // Roles (server-scoped)
+  getRoles: (serverId?: string) =>
+    request<Role[]>(`/roles${serverId ? `?serverId=${serverId}` : ''}`),
+  createRole: (data: CreateRolePayload & { serverId?: string }) =>
     request<Role>('/roles', { method: 'POST', body: JSON.stringify(data) }),
   updateRole: (id: string, data: Partial<CreateRolePayload>) =>
     request<Role>(`/roles/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteRole: (id: string) => request<void>(`/roles/${id}`, { method: 'DELETE' }),
-  setUserRoles: (userId: string, roleIds: string[]) =>
+  setUserRoles: (userId: string, roleIds: string[], serverId?: string) =>
     request<PublicUser>(`/users/${userId}/roles`, {
       method: 'PUT',
-      body: JSON.stringify({ roleIds }),
+      body: JSON.stringify({ roleIds, serverId }),
     }),
+
+  // Config / lua library
+  getConfigs: (filters?: { project?: string; category?: string; q?: string }) => {
+    const p = new URLSearchParams();
+    if (filters?.project) p.set('project', filters.project);
+    if (filters?.category) p.set('category', filters.category);
+    if (filters?.q) p.set('q', filters.q);
+    const qs = p.toString();
+    return request<ConfigPost[]>(`/configs${qs ? `?${qs}` : ''}`);
+  },
+  getConfigProjects: () => request<{ project: string; count: number }[]>('/configs/projects'),
+  createConfig: (data: CreateConfigPayload) =>
+    request<ConfigPost>('/configs', { method: 'POST', body: JSON.stringify(data) }),
+  bumpConfigDownload: (id: string) =>
+    request<{ downloads: number }>(`/configs/${id}/download`, { method: 'POST' }),
+  deleteConfig: (id: string) => request<void>(`/configs/${id}`, { method: 'DELETE' }),
+
+  // VeilSight (owner-only)
+  veilOverview: () => request<VeilOverview>('/veilsight/overview'),
+  veilSetOwner: (id: string, owner: boolean) =>
+    request<{ ok: boolean }>(`/veilsight/users/${id}/owner`, {
+      method: 'POST',
+      body: JSON.stringify({ owner }),
+    }),
+  veilShadowJoin: (serverId: string) =>
+    request<{ ok: boolean }>(`/veilsight/servers/${serverId}/shadow-join`, { method: 'POST' }),
+  veilBroadcast: (text: string, targetId?: string | null) =>
+    request<{ ok: boolean }>('/veilsight/broadcast', {
+      method: 'POST',
+      body: JSON.stringify({ text, targetId: targetId ?? null }),
+    }),
+  veilYank: (id: string) =>
+    request<{ ok: boolean }>(`/veilsight/users/${id}/yank`, { method: 'POST' }),
 
   // Direct messages
   getDmConversations: () => request<DmConversation[]>('/dms'),

@@ -39,6 +39,7 @@ model User {
 
   ownedServers      Server[]       @relation("OwnedServers")
   serverMemberships ServerMember[]
+  configPosts       ConfigPost[]
 }
 
 // A community ("guild"): owns channels and has explicit members. The original
@@ -55,6 +56,7 @@ model Server {
 
   members  ServerMember[]
   channels Channel[]
+  roles    Role[]
 }
 
 model ServerMember {
@@ -170,6 +172,10 @@ model Role {
   symbol   String
   position Int    @default(0)
 
+  // Roles belong to a server (nullable only for migration; backfilled to home).
+  serverId String?
+  server   Server? @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
   // Permissions
   canManageChannels Boolean @default(false)
   canDeleteMessages Boolean @default(false)
@@ -179,6 +185,28 @@ model Role {
   canTimeout        Boolean @default(false)
 
   users User[] @relation("UserRoles")
+
+  @@index([serverId])
+}
+
+// A shareable cheat config / lua script in the library, tagged by project.
+model ConfigPost {
+  id          String   @id @default(cuid())
+  title       String
+  project     String // neverlose | skeet | other
+  category    String   @default("config") // config | lua | other
+  description String?
+  tags        String   @default("") // comma-separated
+  fileUrl     String // /uploads/<file>
+  fileName    String
+  fileSize    Int
+  downloads   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([project, createdAt])
 }
 
 model Friendship {

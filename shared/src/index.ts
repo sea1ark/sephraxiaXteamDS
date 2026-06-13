@@ -126,6 +126,7 @@ export interface Role extends RolePermissions {
   color: string;
   symbol: string;
   position: number;
+  serverId: string | null; // the server this role belongs to
 }
 
 export interface CreateRolePayload extends Partial<RolePermissions> {
@@ -154,6 +155,65 @@ export interface FriendsData {
   friends: PublicUser[];
   incoming: FriendRequest[]; // requests waiting on me to accept
   outgoing: FriendRequest[]; // requests I sent, awaiting the other side
+}
+
+// ---------------------------------------------------------------------------
+// Config / lua library
+// ---------------------------------------------------------------------------
+
+export interface ConfigPost {
+  id: string;
+  title: string;
+  project: string; // neverlose | skeet | other…
+  category: 'config' | 'lua' | 'other';
+  description: string | null;
+  tags: string[];
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  downloads: number;
+  createdAt: string;
+  author: PublicUser;
+}
+
+export interface CreateConfigPayload {
+  title: string;
+  project: string;
+  category: 'config' | 'lua' | 'other';
+  description?: string | null;
+  tags: string[];
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+}
+
+// ---------------------------------------------------------------------------
+// VeilSight (owner-only admin panel)
+// ---------------------------------------------------------------------------
+
+export interface VeilServer {
+  id: string;
+  name: string;
+  icon: string | null;
+  ownerId: string;
+  inviteCode: string;
+  memberCount: number;
+  channelCount: number;
+  memberIds: string[];
+  createdAt: string;
+}
+
+export interface VeilOverview {
+  stats: {
+    users: number;
+    online: number;
+    servers: number;
+    messages: number;
+    dms: number;
+    configs: number;
+  };
+  users: PublicUser[];
+  servers: VeilServer[];
 }
 
 // ---------------------------------------------------------------------------
@@ -273,6 +333,10 @@ export interface ServerToClientEvents {
   'channels:changed': () => void;
   // Emitted when servers / memberships change so clients can refetch /servers.
   'servers:changed': () => void;
+  // Emitted when the config library changes so clients can refetch /configs.
+  'configs:changed': () => void;
+  // A VeilSight broadcast/notice from the platform owner (toast on the client).
+  'veil:notice': (payload: { text: string; from: string }) => void;
   // Emitted to both parties when a friend request / friendship changes.
   'friends:changed': () => void;
   // Sent to a user who has just been kicked or banned (force logout).

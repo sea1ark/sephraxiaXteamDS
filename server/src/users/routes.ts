@@ -45,8 +45,11 @@ export async function userRoutes(app: FastifyInstance) {
     return me ? toPublicUser(me) : null;
   });
 
-  // Current user's effective permissions (owner OR union of role permissions).
-  app.get('/users/me/permissions', async (request) => getPermissions(request.user!.sub));
+  // Current user's effective permissions, scoped to a server (defaults home).
+  app.get('/users/me/permissions', async (request) => {
+    const { serverId } = request.query as { serverId?: string };
+    return getPermissions(request.user!.sub, serverId);
+  });
 
   // Update your own profile (avatar + status), then broadcast to everyone.
   app.patch('/users/me', async (request, reply) => {

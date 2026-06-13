@@ -41,6 +41,7 @@ export function RolesModal() {
   const close = useUiStore((s) => s.closeRoles);
   const roles = useChatStore((s) => s.roles);
   const setRoles = useChatStore((s) => s.setRoles);
+  const activeServerId = useChatStore((s) => s.activeServerId);
 
   const sorted = [...roles].sort((a, b) => b.position - a.position);
 
@@ -75,7 +76,7 @@ export function RolesModal() {
   if (!open) return null;
 
   async function refresh() {
-    setRoles(await api.getRoles());
+    setRoles(await api.getRoles(activeServerId ?? undefined));
   }
 
   async function run(fn: () => Promise<unknown>, okMsg?: string) {
@@ -104,6 +105,7 @@ export function RolesModal() {
         color: '#7d6fc4',
         symbol: '✦',
         position: Math.max(0, minPos - 1),
+        serverId: activeServerId ?? undefined,
         ...EMPTY_PERMS,
       });
       await refresh();

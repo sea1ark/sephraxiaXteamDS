@@ -19,6 +19,8 @@ import { IncomingCallModal } from './components/IncomingCallModal';
 import { ScreenSharePicker } from './components/ScreenSharePicker';
 import { ScreenViewer } from './components/ScreenViewer';
 import { useAuthStore } from './store/auth';
+import { useVoiceStore } from './store/voice';
+import { setPttHeld } from './lib/voice';
 
 export default function App() {
   const loggedIn = useAuthStore((s) => !!s.accessToken && !!s.user);
@@ -43,6 +45,33 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  }, [loggedIn]);
+
+  // Push-to-talk: hold the configured key to open the mic. Works globally
+  // (even while another window has focus would need OS hooks; this covers
+  // in-app focus). Ignores key-repeat and typing fields.
+  useEffect(() => {
+    if (!loggedIn) return;
+    function down(e: KeyboardEvent) {
+      const vs = useVoiceStore.getState();
+      if (!vs.pttEnabled || !vs.pttKey || e.code !== vs.pttKey || e.repeat) return;
+      const el = document.activeElement as HTMLElement | null;
+      const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+      if (typing) return;
+      e.preventDefault();
+      setPttHeld(true);
+    }
+    function up(e: KeyboardEvent) {
+      const vs = useVoiceStore.getState();
+      if (!vs.pttEnabled || !vs.pttKey || e.code !== vs.pttKey) return;
+      setPttHeld(false);
+    }
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+    };
   }, [loggedIn]);
 
   return (
